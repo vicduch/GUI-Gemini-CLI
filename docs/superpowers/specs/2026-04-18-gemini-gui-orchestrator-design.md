@@ -35,12 +35,15 @@ gemini-gui-orchestrator/
 
 ### 3.1 UI Layout
 - **Sidebar Gauche (History & Skills):** Une liste (`Gtk.ListView` via `Gio.ListStore`) affiche l'historique des sessions. Les badges de modèles permettent le Hot-Reload via un `Gtk.DropDown`.
-- **Zone Centrale (Workspace):** Un multiplexeur de terminaux (`Gtk.Grid`). Un terminal peut passer en plein écran (Focus Mode) via un `Gtk.Stack` qui masque la grille et affiche le terminal seul.
+- **Zone Centrale (Workspace):** Un multiplexeur de terminaux (`Gtk.Grid`). Un terminal peut passer en plein écran (Focus Mode) via un `Gtk.Stack` qui masque la grille et affiche le terminal seul. 
+  **MODIFIER**  : Voir les capture d'écrans des dessins à la racine. Gestion de la vue en grille et clic sur terminal pour prendre 90% du workspace, possibilité de cliquer dans la zone restante en arrière plan pour revenir à la grille et transition douce pour zoom et remise en place du terminal dans la grille.  Affichage dynamique avec Sidebars colapsible. 
 - **Sidebar Droite (Agent Monitor):** Un `Gtk.TreeView` affiche l'état en temps réel des sous-agents de la session active (Master Agent, Sub-agents).
 
 ### 3.2 Core Logic (Process & IPC)
 - **Process Management:** `core/process_manager.py` utilise `GLib.spawn_async_with_pipes` pour instancier les processus `gemini-cli`. Pour le Hot-Reload, il envoie un signal SIGTERM au processus, attend la fermeture gracieuse (timeout 3s suivi d'un SIGKILL), modifie la commande de lancement (ex: `--model gemini-3.1-pro`) et relance le processus avec l'ID de session.
 - **IPC Server (Agent Swarm):** `core/ipc_server.py` crée un socket Unix (`/tmp/gemini-gui-<pid>.sock`). Le serveur utilise `GLib.io_add_watch` pour lire les trames JSON (ex: `{"event": "spawn", "agent_id": "alpha"}`) de façon asynchrone dans la boucle d'événements GTK. Ces événements sont dispatchés vers `ui/views/right_sidebar.py` pour mettre à jour l'arbre des agents.
+- **Agent Master (Orchestrateur de Roadmap):** Un composant de la GUI permet d'initialiser un "Master Agent" à partir d'un fichier blueprint. L'agent génère la roadmap (techstack, tâches) et, via l'IPC, instruit la GUI d'ouvrir automatiquement des terminaux parallèles (`TerminalPane`) pour exécuter et suivre les multiples tâches simultanément.
+
 
 ## 4. Gestion des Erreurs
 - **Crash du Processus CLI:** Si un processus `gemini-cli` quitte de façon inattendue, le `TerminalPane` affiche un `Adw.Toast` ("Process exited with code X") et un bouton de redémarrage.
