@@ -3,6 +3,7 @@ import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw, Gio
+from core.logging_utils import configure_logging
 from ui.window import MainWindow
 
 class GeminiGuiApp(Adw.Application):
@@ -17,5 +18,6 @@ class GeminiGuiApp(Adw.Application):
         win.present()
 
 if __name__ == '__main__':
+    configure_logging()
     app = GeminiGuiApp()
     sys.exit(app.run(sys.argv))
