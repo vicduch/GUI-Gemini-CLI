@@ -19,3 +19,23 @@ def test_workspace_add_pane():
     workspace.add_pane(pane)
     assert pane in workspace.panes
     assert workspace.grid.get_child_at(0, 0) == pane
+
+def test_workspace_focus_unfocus():
+    workspace = Workspace()
+    pane = TerminalPane()
+    workspace.add_pane(pane)
+    
+    # Grid should contain the pane initially
+    assert pane.get_parent() == workspace.grid
+    
+    # Focus the pane
+    workspace.focus_pane(pane)
+    assert workspace.focused_pane == pane
+    assert workspace.get_visible_child_name() == "focus_page"
+    assert pane.get_parent() == workspace.focus_bin
+    
+    # Unfocus the pane
+    workspace.unfocus_pane()
+    assert workspace.focused_pane is None
+    assert workspace.get_visible_child_name() == "grid_page"
+    assert pane.get_parent() == workspace.grid

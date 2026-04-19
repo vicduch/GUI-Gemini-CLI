@@ -47,6 +47,8 @@ class Workspace(Gtk.Stack):
 
     def add_pane(self, pane: TerminalPane):
         self.panes.append(pane)
+        pane._grid_col = self._next_col
+        pane._grid_row = self._next_row
         self.grid.attach(pane, self._next_col, self._next_row, 1, 1)
         self._next_col += 1
         if self._next_col > 1: # Basic 2-column layout
@@ -59,7 +61,21 @@ class Workspace(Gtk.Stack):
             self.unfocus_pane()
 
     def focus_pane(self, pane: TerminalPane):
-        pass # To be implemented in next task
+        if self.focused_pane:
+            self.unfocus_pane()
+            
+        self.focused_pane = pane
+        self.grid.remove(pane)
+        self.focus_bin.append(pane)
+        self.set_visible_child_name("focus_page")
 
     def unfocus_pane(self):
-        pass # To be implemented in next task
+        if not self.focused_pane:
+            return
+            
+        pane = self.focused_pane
+        self.focus_bin.remove(pane)
+        self.grid.attach(pane, pane._grid_col, pane._grid_row, 1, 1)
+        
+        self.focused_pane = None
+        self.set_visible_child_name("grid_page")
