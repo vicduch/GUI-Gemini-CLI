@@ -1,0 +1,153 @@
+from __future__ import annotations
+
+import gi
+
+gi.require_version("Gtk", "4.0")
+from gi.repository import Gtk
+
+from ui.components.terminal_pane import TerminalPane
+
+
+class Workspace(Gtk.Stack):
+    def __init__(self, columns: int = 2, **kwargs):
+        super().__init__(**kwargs)
+        self.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+
+        self._columns = max(columns, 1)
+        self._is_transitioning = False
+
+        self.panes: list[TerminalPane] = []
+        self.pane_positions: dict[TerminalPane, tuple[int, int]] = {}
+        self._zoom_handler_ids: dict[TerminalPane, int] = {}
+        self.focused_pane: TerminalPane | None = None
+
+        self.grid = Gtk.Grid()
+        self.grid.set_column_spacing(8)
+        self.grid.set_row_spacing(8)
+        self.grid.set_margin_top(8)
+        self.grid.set_margin_bottom(8)
+        self.grid.set_margin_start(8)
+        self.grid.set_margin_end(8)
+        self.add_titled(self.grid, "grid_page", "Grid")
+
+        self.focus_overlay = Gtk.Overlay()
+        self.focus_background = Gtk.Button()
+        self.focus_background.set_has_frame(False)
+        self.focus_background.set_hexpand(True)
+        self.focus_background.set_vexpand(True)
+        self.focus_background.connect("clicked", self._on_background_clicked)
+        self.focus_overlay.set_child(self.focus_background)
+
+        self.focus_bin = Gtk.Box()
+        self.focus_bin.set_halign(Gtk.Align.FILL)
+        self.focus_bin.set_valign(Gtk.Align.FILL)
+        self.focus_bin.set_hexpand(True)
+        self.focus_bin.set_vexpand(True)
+        self.focus_overlay.add_overlay(self.focus_bin)
+        self.add_titled(self.focus_overlay, "focus_page", "Focus")
+
+        self.set_visible_child_name("grid_page")
+        self.connect("notify::visible-child-name", self._on_visible_page_changed)
+
+    def add_pane(self, pane: TerminalPane) -> None:
+        if pane in self.panes:
+            return
+
+        self.panes.append(pane)
+        col, row = self._next_free_position()
+        self.pane_positions[pane] = (col, row)
+        self.grid.attach(pane, col, row, 1, 1)
+
+        handler_id = pane.zoom_button.connect("clicked", self._on_zoom_clicked, pane)
+        self._zoom_handler_ids[pane] = handler_id
+
+    def remove_pane(self, pane: TerminalPane) -> bool:
+        if pane not in self.panes:
+            return False
+
+        if pane is self.focused_pane:
+            if pane.get_parent() is self.focus_bin:
+                self.focus_bin.remove(pane)
+            self.focused_pane = None
+            self.set_visible_child_name("grid_page")
+        elif pane.get_parent() is self.grid:
+            self.grid.remove(pane)
+
+        handler_id = self._zoom_handler_ids.pop(pane, None)
+        if handler_id is not None:
+            pane.zoom_button.disconnect(handler_id)
+
+        self.panes.remove(pane)
+        self.pane_positions.pop(pane, None)
+        return True
+
+    def focus_pane(self, pane: TerminalPane) -> None:
+        if pane not in self.panes or self._is_transitioning:
+            return
+        if pane is self.focused_pane:
+            return
+
+        if self.focused_pane is not None:
+            self.unfocus_pane()
+
+        self._is_transitioning = True
+        self.focused_pane = pane
+
+        if pane.get_parent() is self.grid:
+            self.grid.remove(pane)
+        if pane.get_parent() is not self.focus_bin:
+            self.focus_bin.append(pane)
+
+        self._update_focus_margins()
+        self.set_visible_child_name("focus_page")
+        self._is_transitioning = False
+
+    def unfocus_pane(self) -> None:
+        if self.focused_pane is None or self._is_transitioning:
+            return
+
+        self._is_transitioning = True
+        pane = self.focused_pane
+
+        if pane.get_parent() is self.focus_bin:
+            self.focus_bin.remove(pane)
+
+        col, row = self.pane_positions.get(pane, self._next_free_position())
+        self.pane_positions[pane] = (col, row)
+        self.grid.attach(pane, col, row, 1, 1)
+
+        self.focused_pane = None
+        self.set_visible_child_name("grid_page")
+        self._is_transitioning = False
+
+    def _on_zoom_clicked(self, _button: Gtk.Button, pane: TerminalPane) -> None:
+        self.focus_pane(pane)
+
+    def _on_background_clicked(self, _button: Gtk.Button) -> None:
+        self.unfocus_pane()
+
+    def _on_visible_page_changed(self, *_args) -> None:
+        self._update_focus_margins()
+
+    def _update_focus_margins(self, width: int | None = None, height: int | None = None) -> None:
+        if width is None:
+            width = max(self.get_width(), 0)
+        if height is None:
+            height = max(self.get_height(), 0)
+
+        horizontal_margin = max(int(width * 0.05), 8)
+        vertical_margin = max(int(height * 0.05), 8)
+        self.focus_bin.set_margin_start(horizontal_margin)
+        self.focus_bin.set_margin_end(horizontal_margin)
+        self.focus_bin.set_margin_top(vertical_margin)
+        self.focus_bin.set_margin_bottom(vertical_margin)
+
+    def _next_free_position(self) -> tuple[int, int]:
+        used = set(self.pane_positions.values())
+        index = 0
+        while True:
+            col = index % self._columns
+            row = index // self._columns
+            if (col, row) not in used:
+                return col, row
+            index += 1
