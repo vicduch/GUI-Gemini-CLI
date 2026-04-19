@@ -28,7 +28,7 @@ Welcome to the `GUI Terminal` project workspace. When working in this repository
 - **Strict TDD (Test-Driven Development):** You MUST write failing tests in `tests/` before implementing any feature or fixing any bug. No production code without a failing test first.
 - **Planning First:** Always use the `writing-plans` skill to generate a step-by-step markdown plan in `docs/superpowers/plans/` before starting a new phase or complex feature.
 - **Branching:** Work on feature branches (`feat/...` or `fix/...`) and ensure all tests pass before merging or pushing to `master`.
-- **Subagents:** Use `subagent-driven-development` or `executing-plans` to execute tasks in isolation when appropriate.
+- **Subagents:** The latest version of Gemini CLI integrates native subagents. Use them quickly by prefixing your prompt with `@` (e.g., `@generalist` or `@code-reviewer`) for targeted tasks, or let the main agent delegate automatically. You can also use `subagent-driven-development` or `executing-plans` to execute tasks in isolation.
 
 ## 5. Current State & Roadmap
 - **Phase 1 (Done):** Core models and initial process manager stubs.
