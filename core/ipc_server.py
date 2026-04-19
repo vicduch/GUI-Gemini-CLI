@@ -51,6 +51,7 @@ class IpcServer:
         
         self.server_watch_id = GLib.io_add_watch(
             self.server_socket.fileno(), 
+            GLib.PRIORITY_DEFAULT,
             GLib.IO_IN, 
             self._on_accept
         )
@@ -74,8 +75,8 @@ class IpcServer:
             client_sock.setblocking(False)
             client_fd = client_sock.fileno()
             
-            watch_id = GLib.io_add_watch(client_fd, GLib.IO_IN, self._on_read, client_fd)
-            self.clients[client_fd] = {"sock": client_sock, "buffer": "", "watch_id": watch_id}
+            watch_id = GLib.io_add_watch(client_fd, GLib.PRIORITY_DEFAULT, GLib.IO_IN, self._on_read, client_fd)
+            self.clients[client_fd] = {"sock": client_sock, "buffer": b"", "watch_id": watch_id}
         except BlockingIOError:
             pass
         return True # Keep listening
@@ -106,16 +107,24 @@ class IpcServer:
                 self._cleanup_client(client_fd)
                 return False
                 
-            client_info["buffer"] += data.decode("utf-8")
+            client_info["buffer"] += data
+            print(f"DEBUG recv data: {data!r}, buffer now: {client_info['buffer']!r}")
+            
+            if len(client_info["buffer"]) > 1024 * 1024:
+                self._cleanup_client(client_fd)
+                return False
             
             # Process complete messages only
-            while "\n" in client_info["buffer"]:
-                line, client_info["buffer"] = client_info["buffer"].split("\n", 1)
-                line = line.strip()
-                if line and self.callback:
+            while b"\n" in client_info["buffer"]:
+                line_bytes, client_info["buffer"] = client_info["buffer"].split(b"\n", 1)
+                line_bytes = line_bytes.strip()
+                if line_bytes and self.callback:
                     try:
+                        line = line_bytes.decode("utf-8")
                         msg = json.loads(line)
                         self.callback(msg)
+                    except UnicodeDecodeError as e:
+                        print(f"IPC Unicode Decode Error: {e} - Payload: {line_bytes}")
                     except json.JSONDecodeError as e:
                         print(f"IPC JSON Decode Error: {e} - Payload: {line}")
                         
