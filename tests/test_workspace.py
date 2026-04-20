@@ -129,3 +129,21 @@ def test_workspace_transition_flag_resets_if_focus_transition_fails(
         workspace.focus_pane(pane)
 
     assert workspace._is_transitioning is False
+
+
+def test_workspace_margins_update_on_resize() -> None:
+    """Verify that margins update automatically when workspace is resized."""
+    workspace = Workspace()
+    workspace.focus_bin.set_margin_start(0)
+
+    # Initial margins based on current size (or defaults)
+    # We simulate a size allocation
+    allocation = gi.repository.Gdk.Rectangle()
+    allocation.width = 1000
+    allocation.height = 800
+
+    # Triggering size allocation (this should trigger do_size_allocate)
+    workspace.size_allocate(allocation, -1)
+
+    assert workspace.focus_bin.get_margin_start() == 50
+    assert workspace.focus_bin.get_margin_top() == 40

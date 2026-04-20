@@ -135,6 +135,10 @@ class Workspace(Gtk.Stack):
     def _on_visible_page_changed(self, *_args) -> None:
         self._update_focus_margins()
 
+    def do_size_allocate(self, width: int, height: int, baseline: int) -> None:
+        Gtk.Stack.do_size_allocate(self, width, height, baseline)
+        self._update_focus_margins(width=width, height=height)
+
     def _update_focus_margins(self, width: int | None = None, height: int | None = None) -> None:
         if width is None:
             width = max(self.get_width(), 0)
