@@ -36,4 +36,12 @@ Welcome to the `GUI Terminal` project workspace. When working in this repository
 - **Phase 2 (Done):** Robust IPC Server (`core/ipc_server.py`) integrated with GLib, basic `MainWindow` structure, and `TerminalPane` component encapsulating VTE.
 - **Phase 3 (Next):** Implement the `Workspace` (Multi-terminal `Gtk.Grid`) and the Focus Mode (transitioning a terminal to take up 90% of the screen).
 
+## 6. Local Workspace Notes
+- **Local-only artifacts (do not commit unless explicitly requested):**
+  - `.obsidian/`
+  - `Capture d’écran du 2026-04-18 14-26-12.png`
+  - `Capture d’écran du 2026-04-18 14-26-18.png`
+  - `blueprint projet.md`
+  - `.idea/GUI Terminal.iml` (user-local IDE metadata)
+
 *Note: GitHub authentication is configured via HTTPS with a Personal Access Token (PAT) saved in the agent's memory. You can autonomously push branches to the remote repository when requested.*
