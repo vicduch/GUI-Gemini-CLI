@@ -32,9 +32,14 @@ Welcome to the `GUI Terminal` project workspace. When working in this repository
 - **Subagents:** The latest version of Gemini CLI integrates native subagents. Use them quickly by prefixing your prompt with `@` (e.g., `@generalist` or `@code-reviewer`) for targeted tasks, or let the main agent delegate automatically. You can also use `subagent-driven-development` or `executing-plans` to execute tasks in isolation.
 
 ## 5. Current State & Roadmap
-- **Phase 1 (Done):** Core models and initial process manager stubs.
-- **Phase 2 (Done):** Robust IPC Server (`core/ipc_server.py`) integrated with GLib, basic `MainWindow` structure, and `TerminalPane` component encapsulating VTE.
-- **Phase 3 (Next):** Implement the `Workspace` (Multi-terminal `Gtk.Grid`) and the Focus Mode (transitioning a terminal to take up 90% of the screen).
+- **Phase 1 (Done):** Core models and foundational backend structure.
+- **Phase 2 (Done):** IPC server (`core/ipc_server.py`) integrated with GLib, plus initial `MainWindow` and `TerminalPane`.
+- **Phase 3 (Done):** `Workspace` implemented (`Gtk.Grid` + `Gtk.Stack`) with functional Focus Mode transitions.
+- **Phase 4 (In Review):** Hardening pass completed on `feat/phase-4-hardening` (ProcessManager robustness, IPC safety, workspace transition safety, headless test reliability, repo-wide lint config updates). PR open: `#1`.
+- **Next (Phase 5):** Productization and integration:
+  - Integrate real `gemini-cli` orchestration flows end-to-end in UI.
+  - Add richer agent/session monitoring and recovery UX.
+  - Stabilize CI policy and warning budget for long-term maintenance.
 
 ## 6. Local Workspace Notes
 - **Local-only artifacts (do not commit unless explicitly requested):**
