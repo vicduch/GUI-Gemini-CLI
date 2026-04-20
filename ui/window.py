@@ -1,9 +1,12 @@
 import gi
+
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
-from gi.repository import Gtk, Adw
+from gi.repository import Adw, Gtk
+
 from ui.components.terminal_pane import TerminalPane
 from ui.views.workspace import Workspace
+
 
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, terminal_factory=None, **kwargs):

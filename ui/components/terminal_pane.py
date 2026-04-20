@@ -1,7 +1,9 @@
 import gi
+
 gi.require_version('Gtk', '4.0')
 gi.require_version('Vte', '3.91')
 from gi.repository import Gtk, Vte
+
 
 class TerminalPane(Gtk.Overlay):
     def __init__(self, terminal_factory=None, **kwargs):

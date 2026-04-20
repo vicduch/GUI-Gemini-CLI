@@ -1,4 +1,5 @@
-from core.models import Session, Agent
+from core.models import Agent, Session
+
 
 def test_session_creation():
     session = Session(id="sess-1", model="gemini-3.1-pro", workspace="/tmp")

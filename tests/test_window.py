@@ -1,10 +1,12 @@
-import pytest
 import gi
+import pytest
+
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
-from gi.repository import Gtk, Adw
-from ui.window import MainWindow
+from gi.repository import Adw, Gtk
+
 from ui.views.workspace import Workspace
+from ui.window import MainWindow
 
 pytestmark = pytest.mark.usefixtures("require_gtk_display")
 

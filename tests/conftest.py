@@ -10,7 +10,6 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gdk, Gtk
 
-
 _runtime_dir = Path("/tmp/gui-terminal-runtime")
 _runtime_dir.mkdir(parents=True, exist_ok=True)
 _runtime_dir.chmod(0o700)

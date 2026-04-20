@@ -1,10 +1,14 @@
 import sys
+
 import gi
+
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
-from gi.repository import Gtk, Adw, Gio
+from gi.repository import Adw, Gio
+
 from core.logging_utils import configure_logging
 from ui.window import MainWindow
+
 
 class GeminiGuiApp(Adw.Application):
     def __init__(self):
