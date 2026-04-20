@@ -6,6 +6,7 @@ from gi.repository import Adw, Gtk
 
 from ui.components.terminal_pane import TerminalPane
 from ui.views.workspace import Workspace
+from ui.views.right_sidebar import AgentMonitorSidebar
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -26,15 +27,14 @@ class MainWindow(Adw.ApplicationWindow):
         self.workspace.set_hexpand(True)
         self.workspace.set_vexpand(True)
 
-        # Stub Sidebar Droite
-        right_sidebar = Gtk.Box(width_request=300)
-        right_sidebar.append(Gtk.Label(label="Agent Swarm Monitor"))
+        # Sidebar Droite (Agent Monitor)
+        self.right_sidebar = AgentMonitorSidebar()
         
         main_box.append(left_sidebar)
         main_box.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
         main_box.append(self.workspace)
         main_box.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
-        main_box.append(right_sidebar)
+        main_box.append(self.right_sidebar)
 
         self.set_content(main_box)
 
