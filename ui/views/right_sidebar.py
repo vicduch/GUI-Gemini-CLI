@@ -49,7 +49,10 @@ class AgentMonitorSidebar(Gtk.Box):
         for i in range(self.store.get_n_items()):
             item = self.store.get_item(i)
             if item.agent_id == agent_id:
-                item.status = data.get("status", item.status)
+                new_status = data.get("status", item.status)
+                if new_status != item.status:
+                    new_item = AgentItem(agent_id=item.agent_id, status=new_status, role=item.role)
+                    self.store.splice(i, 1, [new_item])
                 return
         
         new_item = AgentItem(agent_id=agent_id, status=data.get("status", "unknown"), role=data.get("role", "agent"))
