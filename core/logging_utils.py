@@ -6,7 +6,7 @@ from typing import Any
 
 _DEFAULT_FORMAT = (
     "%(asctime)s %(levelname)s %(name)s "
-    "[session=%(session_id)s pid=%(process_pid)s agent=%(agent_id)s] %(message)s"
+    "[session=%(session_id)s pid=%(process_pid)s agent=%(agent_id)s corr=%(correlation_id)s] %(message)s"
 )
 
 
@@ -23,6 +23,7 @@ class ContextLoggerAdapter(logging.LoggerAdapter[logging.Logger]):
         merged.setdefault("session_id", "-")
         merged.setdefault("process_pid", "-")
         merged.setdefault("agent_id", "-")
+        merged.setdefault("correlation_id", "-")
         kwargs["extra"] = merged
         return msg, kwargs
 

@@ -25,6 +25,7 @@ class ProcessState(StrEnum):
 class ProcessInfo:
     session_id: str
     command: tuple[str, ...]
+    correlation_id: str = ""
     state: ProcessState = ProcessState.STARTING
     pid: int | None = None
     stdin_fd: int | None = None
@@ -43,8 +44,10 @@ class ProcessEvent:
     event: str
     state: ProcessState
     pid: int | None
+    correlation_id: str = ""
     message: str | None = None
     exit_status: int | None = None
+    error_contract: dict | None = None
 
 
 class ProcessManager:
@@ -274,6 +277,7 @@ class ProcessManager:
         *,
         message: str | None = None,
         exit_status: int | None = None,
+        error_contract: dict | None = None,
     ) -> None:
         if self._event_callback is None:
             return
@@ -282,8 +286,10 @@ class ProcessManager:
             event=event,
             state=process.state,
             pid=process.pid,
+            correlation_id=process.correlation_id,
             message=message,
             exit_status=exit_status,
+            error_contract=error_contract,
         )
         try:
             self._event_callback(payload)

@@ -1,4 +1,9 @@
-from core.models import Agent, Session
+from core.models import Agent, ErrorContract, Session
+
+
+def test_error_contract_serialization():
+    err = ErrorContract(code="SPAWN_FAIL", message="Friendly message", severity="error", correlation_id="123")
+    assert err.to_dict() == {"code": "SPAWN_FAIL", "message": "Friendly message", "severity": "error", "correlation_id": "123"}
 
 
 def test_session_creation():

@@ -1,4 +1,15 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+
+
+@dataclass
+class ErrorContract:
+    code: str
+    message: str
+    severity: str
+    correlation_id: str
+
+    def to_dict(self) -> dict:
+        return asdict(self)
 
 
 @dataclass
