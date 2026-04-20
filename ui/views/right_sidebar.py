@@ -1,6 +1,7 @@
 import gi
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, Gio, GObject
+from core.models import Agent
 
 class AgentItem(GObject.Object):
     __gtype_name__ = 'AgentItem'
@@ -19,10 +20,12 @@ class AgentMonitorSidebar(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, **kwargs)
         self.set_size_request(300, -1)
         self.store = Gio.ListStore(item_type=AgentItem)
+        self._agent_cache: dict[str, AgentItem] = {}
         
         factory = Gtk.SignalListItemFactory()
         factory.connect("setup", self._setup_list_item)
         factory.connect("bind", self._bind_list_item)
+        factory.connect("unbind", self._unbind_list_item)
         
         selection = Gtk.SingleSelection(model=self.store)
         list_view = Gtk.ListView(model=selection, factory=factory)
@@ -41,19 +44,27 @@ class AgentMonitorSidebar(Gtk.Box):
     def _bind_list_item(self, factory, list_item):
         item = list_item.get_item()
         label = list_item.get_child()
-        label.set_text(f"{item.role}: {item.agent_id} [{item.status}]")
-
-    def update_agent(self, data: dict):
-        # Update existing or add new
-        agent_id = data.get("agent_id")
-        for i in range(self.store.get_n_items()):
-            item = self.store.get_item(i)
-            if item.agent_id == agent_id:
-                new_status = data.get("status", item.status)
-                if new_status != item.status:
-                    new_item = AgentItem(agent_id=item.agent_id, status=new_status, role=item.role)
-                    self.store.splice(i, 1, [new_item])
-                return
         
-        new_item = AgentItem(agent_id=agent_id, status=data.get("status", "unknown"), role=data.get("role", "agent"))
-        self.store.append(new_item)
+        def update_label(*args):
+            label.set_text(f"{item.role}: {item.agent_id} [{item.status}]")
+            
+        update_label() # Initial set
+        handler_id = item.connect("notify::status", update_label)
+        list_item._handler_id = handler_id
+
+    def _unbind_list_item(self, factory, list_item):
+        item = list_item.get_item()
+        handler_id = getattr(list_item, "_handler_id", None)
+        if handler_id and item:
+            item.disconnect(handler_id)
+            list_item._handler_id = None
+
+    def update_agent(self, agent: Agent):
+        if agent.id in self._agent_cache:
+            item = self._agent_cache[agent.id]
+            if item.status != agent.status:
+                item.status = agent.status
+        else:
+            new_item = AgentItem(agent_id=agent.id, status=agent.status, role=agent.role)
+            self._agent_cache[agent.id] = new_item
+            self.store.append(new_item)
