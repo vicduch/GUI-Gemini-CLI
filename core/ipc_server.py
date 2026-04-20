@@ -64,7 +64,8 @@ class IpcServer:
     def _on_accept(self, _fd: int, condition: GLib.IOCondition) -> bool:
         if condition & (GLib.IO_HUP | GLib.IO_ERR | GLib.IO_NVAL):
             logger.warning("ipc server watch received terminal condition=%s", int(condition))
-            return True
+            self.stop()
+            return False
 
         if self.server_socket is None:
             return False
@@ -192,4 +193,7 @@ class IpcServer:
                 self.server_socket = None
 
         if os.path.exists(self.socket_path):
-            os.remove(self.socket_path)
+            try:
+                os.remove(self.socket_path)
+            except OSError:
+                logger.debug("failed to remove socket path=%s", self.socket_path)

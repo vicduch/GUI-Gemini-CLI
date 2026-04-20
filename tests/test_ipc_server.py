@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 import os
 import socket
+import uuid
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -34,8 +36,10 @@ def _run_loop_until(predicate: Callable[[], bool], timeout_ms: int = 1200) -> No
 
 
 @pytest.fixture
-def socket_path(tmp_path: Any) -> str:
-    return str(tmp_path / "test_ipc.sock")
+def socket_path() -> str:
+    socket_dir = Path.cwd() / ".tmp-test-ipc"
+    socket_dir.mkdir(parents=True, exist_ok=True)
+    return str(socket_dir / f"test_ipc_{uuid.uuid4().hex}.sock")
 
 
 @pytest.fixture
@@ -184,3 +188,26 @@ def test_ipc_server_multi_clients_fragmentation(server: IpcServer, socket_path: 
 
     ids = sorted(msg["agent_id"] for msg in received)
     assert ids == ["a1", "a2", "b1", "b2"]
+
+
+def test_ipc_server_abrupt_client_close_is_cleaned(server: IpcServer, socket_path: str) -> None:
+    server.set_callback(lambda _: None)
+    client = _connect(socket_path)
+    _run_loop_until(lambda: len(server.clients) == 1)
+
+    client.close()
+    _run_loop_until(lambda: len(server.clients) == 0)
+
+    assert server.clients == {}
+
+
+def test_ipc_server_accept_terminal_condition_stops_server(socket_path: str) -> None:
+    srv = IpcServer(socket_path)
+    srv.start()
+
+    assert srv.server_socket is not None
+    server_fd = srv.server_socket.fileno()
+    assert srv._on_accept(server_fd, GLib.IO_NVAL) is False
+
+    assert srv.server_socket is None
+    assert srv.server_watch_id is None

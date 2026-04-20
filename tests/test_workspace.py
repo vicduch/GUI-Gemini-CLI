@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import gi
+import pytest
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
 
 from ui.components.terminal_pane import TerminalPane
 from ui.views.workspace import Workspace
+
+pytestmark = pytest.mark.usefixtures("require_gtk_display")
 
 
 def _make_pane() -> TerminalPane:
@@ -99,3 +102,30 @@ def test_workspace_focus_margins_follow_90_percent_rule() -> None:
     assert workspace.focus_bin.get_margin_end() == 50
     assert workspace.focus_bin.get_margin_top() == 40
     assert workspace.focus_bin.get_margin_bottom() == 40
+
+
+def test_workspace_does_not_use_dynamic_grid_attributes() -> None:
+    workspace = Workspace()
+    pane = _make_pane()
+    workspace.add_pane(pane)
+
+    assert not hasattr(pane, "_grid_col")
+    assert not hasattr(pane, "_grid_row")
+
+
+def test_workspace_transition_flag_resets_if_focus_transition_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = Workspace()
+    pane = _make_pane()
+    workspace.add_pane(pane)
+
+    def _raise(_name: str) -> None:
+        raise RuntimeError("transition failed")
+
+    monkeypatch.setattr(workspace, "set_visible_child_name", _raise)
+
+    with pytest.raises(RuntimeError):
+        workspace.focus_pane(pane)
+
+    assert workspace._is_transitioning is False

@@ -6,9 +6,7 @@ from gi.repository import Gtk, Adw
 from ui.window import MainWindow
 from ui.views.workspace import Workspace
 
-@pytest.fixture(scope="session", autouse=True)
-def init_adw():
-    Adw.init()
+pytestmark = pytest.mark.usefixtures("require_gtk_display")
 
 @pytest.fixture
 def adw_app():

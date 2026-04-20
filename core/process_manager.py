@@ -126,7 +126,10 @@ class ProcessManager:
         try:
             os.kill(process.pid, signal.SIGTERM)
         except ProcessLookupError:
+            self._close_spawn_pid(process.pid)
+            self._remove_child_watch(process)
             self._finalize_exit(process, 0, was_stopping=True)
+            self._restart_if_pending(session_id)
             return True
         except OSError as exc:
             process.state = ProcessState.FAILED
@@ -188,7 +191,9 @@ class ProcessManager:
         GLib.spawn_close_pid(pid)
         if process is None:
             return
-        if process.pid is not None and process.pid != pid:
+        if process.pid is None:
+            return
+        if process.pid != pid:
             return
 
         was_stopping = process.state is ProcessState.STOPPING
@@ -225,6 +230,15 @@ class ProcessManager:
         GLib.source_remove(process.stop_timeout_id)
         process.stop_timeout_id = None
 
+    def _remove_child_watch(self, process: ProcessInfo) -> None:
+        if process.watch_id is None:
+            return
+        try:
+            GLib.source_remove(process.watch_id)
+        except Exception:
+            logger.debug("failed to remove child watch source_id=%s", process.watch_id)
+        process.watch_id = None
+
     def _close_stream_fds(self, process: ProcessInfo) -> None:
         for attr in ("stdin_fd", "stdout_fd", "stderr_fd"):
             fd = getattr(process, attr)
@@ -235,6 +249,14 @@ class ProcessManager:
             except OSError:
                 pass
             setattr(process, attr, None)
+
+    def _close_spawn_pid(self, pid: int | None) -> None:
+        if pid is None:
+            return
+        try:
+            GLib.spawn_close_pid(pid)
+        except Exception:
+            logger.debug("failed to close spawn pid=%s", pid)
 
     def _set_non_blocking(self, stdin_fd: int, stdout_fd: int, stderr_fd: int) -> None:
         for fd in (stdin_fd, stdout_fd, stderr_fd):

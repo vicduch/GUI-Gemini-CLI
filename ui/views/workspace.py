@@ -91,34 +91,40 @@ class Workspace(Gtk.Stack):
             self.unfocus_pane()
 
         self._is_transitioning = True
-        self.focused_pane = pane
+        try:
+            self.focused_pane = pane
 
-        if pane.get_parent() is self.grid:
-            self.grid.remove(pane)
-        if pane.get_parent() is not self.focus_bin:
-            self.focus_bin.append(pane)
+            if pane.get_parent() is self.grid:
+                self.grid.remove(pane)
+            if pane.get_parent() is not self.focus_bin:
+                self.focus_bin.append(pane)
 
-        self._update_focus_margins()
-        self.set_visible_child_name("focus_page")
-        self._is_transitioning = False
+            self._update_focus_margins()
+            self.set_visible_child_name("focus_page")
+        finally:
+            self._is_transitioning = False
 
     def unfocus_pane(self) -> None:
         if self.focused_pane is None or self._is_transitioning:
             return
 
         self._is_transitioning = True
-        pane = self.focused_pane
+        try:
+            pane = self.focused_pane
+            if pane is None:
+                return
 
-        if pane.get_parent() is self.focus_bin:
-            self.focus_bin.remove(pane)
+            if pane.get_parent() is self.focus_bin:
+                self.focus_bin.remove(pane)
 
-        col, row = self.pane_positions.get(pane, self._next_free_position())
-        self.pane_positions[pane] = (col, row)
-        self.grid.attach(pane, col, row, 1, 1)
+            col, row = self.pane_positions.get(pane, self._next_free_position())
+            self.pane_positions[pane] = (col, row)
+            self.grid.attach(pane, col, row, 1, 1)
 
-        self.focused_pane = None
-        self.set_visible_child_name("grid_page")
-        self._is_transitioning = False
+            self.focused_pane = None
+            self.set_visible_child_name("grid_page")
+        finally:
+            self._is_transitioning = False
 
     def _on_zoom_clicked(self, _button: Gtk.Button, pane: TerminalPane) -> None:
         self.focus_pane(pane)

@@ -148,6 +148,21 @@ def test_stop_graceful_before_timeout(
     assert manager.processes["session-1"].stop_timeout_id is None
 
 
+def test_stop_is_idempotent_while_stopping(
+    fake_glib: _FakeGLib, recorded_signals: list[tuple[int, int]]
+) -> None:
+    manager = ProcessManager(stop_timeout_ms=50)
+    process = manager.spawn("session-idem", ["gemini"])
+    pid = process.pid
+
+    assert manager.stop("session-idem") is True
+    assert manager.stop("session-idem") is True
+    fake_glib.trigger_exit(process.pid or 0, 0)
+
+    assert recorded_signals == [(pid, signal.SIGTERM)]
+    assert manager.processes["session-idem"].state is ProcessState.STOPPED
+
+
 def test_stop_forces_sigkill_after_timeout(
     fake_glib: _FakeGLib, recorded_signals: list[tuple[int, int]]
 ) -> None:
@@ -191,3 +206,47 @@ def test_process_crash_marks_failed(fake_glib: _FakeGLib) -> None:
     fake_glib.trigger_exit(process.pid or 0, 1)
 
     assert manager.processes["session-4"].state is ProcessState.FAILED
+
+
+def test_stop_process_lookup_error_cleans_child_watch(
+    fake_glib: _FakeGLib, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manager = ProcessManager()
+    process = manager.spawn("session-5", ["gemini"])
+    pid = process.pid
+    watch_id = process.watch_id
+    assert watch_id is not None
+
+    def _kill_missing(_pid: int, _sig: int) -> None:
+        raise ProcessLookupError("already gone")
+
+    monkeypatch.setattr(os, "kill", _kill_missing)
+
+    assert manager.stop("session-5") is True
+    assert manager.processes["session-5"].state is ProcessState.STOPPED
+    assert manager.processes["session-5"].watch_id is None
+    assert pid in fake_glib.closed_pids
+    assert watch_id in fake_glib.removed_sources
+
+
+def test_hot_reload_process_lookup_error_restarts_pending_command(
+    fake_glib: _FakeGLib, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manager = ProcessManager()
+    first = manager.spawn("session-6", ["gemini", "--model", "a"])
+    first_pid = first.pid
+
+    def _kill_missing(_pid: int, _sig: int) -> None:
+        raise ProcessLookupError("already gone")
+
+    monkeypatch.setattr(os, "kill", _kill_missing)
+
+    assert manager.hot_reload("session-6", ["gemini", "--model", "b"]) is True
+
+    reloaded = manager.processes["session-6"]
+    assert first_pid in fake_glib.closed_pids
+    assert reloaded.state is ProcessState.RUNNING
+    assert reloaded.command == ("gemini", "--model", "b")
+    assert reloaded.pending_command is None
+    assert reloaded.pid is not None
+    assert reloaded.pid != first_pid
