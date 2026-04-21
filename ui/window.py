@@ -7,6 +7,7 @@ from gi.repository import Adw, Gtk
 from core.models import Agent, ErrorContract
 from core.process_manager import ProcessState
 from ui.components.terminal_pane import TerminalPane
+from ui.views.left_sidebar import LeftSidebar
 from ui.views.right_sidebar import AgentMonitorSidebar
 from ui.views.workspace import Workspace
 
@@ -23,9 +24,8 @@ class MainWindow(Adw.ApplicationWindow):
         # Structure de base : Box horizontale contenant Sidebar G, Workspace, Sidebar D
         main_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
 
-        # Stub Sidebar Gauche
-        left_sidebar = Gtk.Box(width_request=250)
-        left_sidebar.append(Gtk.Label(label="History & Skills"))
+        # Sidebar Gauche (History & Skills)
+        self.left_sidebar = LeftSidebar()
 
         # Workspace central (grid + focus)
         self.workspace = Workspace()
@@ -35,7 +35,7 @@ class MainWindow(Adw.ApplicationWindow):
         # Sidebar Droite (Agent Monitor)
         self.right_sidebar = AgentMonitorSidebar()
 
-        main_box.append(left_sidebar)
+        main_box.append(self.left_sidebar)
         main_box.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
         main_box.append(self.workspace)
         main_box.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
