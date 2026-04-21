@@ -166,6 +166,28 @@ class ProcessManager:
 
         return self.stop(session_id, timeout_ms=timeout_ms)
 
+    def restart_with_model(self, session_id: str, model_name: str) -> bool:
+        """Helper to hot-reload a session with a different model."""
+        process = self.processes.get(session_id)
+        if not process:
+            return False
+            
+        # Reconstruct command with new model
+        # Assuming command[0] is the executable and we want to replace or add --model
+        new_command = list(process.command)
+        
+        # Simple heuristic: if --model exists, replace its next arg. Else append.
+        try:
+            idx = new_command.index("--model")
+            if idx + 1 < len(new_command):
+                new_command[idx + 1] = model_name
+            else:
+                new_command.append(model_name)
+        except ValueError:
+            new_command.extend(["--model", model_name])
+            
+        return self.hot_reload(session_id, new_command)
+
     def stop_all(self) -> None:
         for session_id in list(self.processes):
             self.stop(session_id)
