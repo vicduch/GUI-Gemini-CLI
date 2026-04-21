@@ -1,7 +1,10 @@
 import gi
+
 gi.require_version('Gtk', '4.0')
-from gi.repository import Gtk, Gio, GObject
+from gi.repository import Gio, GObject, Gtk
+
 from core.models import Agent
+
 
 class AgentItem(GObject.Object):
     __gtype_name__ = 'AgentItem'

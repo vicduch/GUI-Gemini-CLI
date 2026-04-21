@@ -4,8 +4,8 @@ import pytest
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk
 
-from ui.components.terminal_pane import TerminalPane
 from core.models import ErrorContract
+from ui.components.terminal_pane import TerminalPane
 
 pytestmark = pytest.mark.usefixtures("require_gtk_display")
 

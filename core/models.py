@@ -1,4 +1,5 @@
 from dataclasses import asdict, dataclass
+from typing import Any
 
 
 @dataclass
@@ -8,7 +9,7 @@ class ErrorContract:
     severity: str
     correlation_id: str
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 

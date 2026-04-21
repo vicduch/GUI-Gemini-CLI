@@ -6,9 +6,9 @@ gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Adw, Gio
 
+from core.ipc_server import IpcServer
 from core.logging_utils import configure_logging
 from core.process_manager import ProcessManager
-from core.ipc_server import IpcServer
 from ui.window import MainWindow
 
 

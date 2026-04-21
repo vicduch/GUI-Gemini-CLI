@@ -1,8 +1,9 @@
 import gi
+
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk
-from ui.views.right_sidebar import AgentMonitorSidebar
 from core.models import Agent
+from ui.views.right_sidebar import AgentMonitorSidebar
+
 
 def test_agent_monitor_adds_agent():
     sidebar = AgentMonitorSidebar()

@@ -5,6 +5,7 @@ import signal
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any
 
 from gi.repository import GLib
 
@@ -47,7 +48,7 @@ class ProcessEvent:
     correlation_id: str = ""
     message: str | None = None
     exit_status: int | None = None
-    error_contract: dict | None = None
+    error_contract: dict[str, Any] | None = None
 
 
 class ProcessManager:
@@ -81,7 +82,7 @@ class ProcessManager:
         self._emit_event(process, "starting")
 
         try:
-            pid, stdin_fd, stdout_fd, stderr_fd = GLib.spawn_async(
+            pid, stdin_fd, stdout_fd, stderr_fd = GLib.spawn_async(  # type: ignore[no-untyped-call]
                 argv=list(command),
                 flags=self._spawn_flags,
                 standard_input=True,
@@ -99,7 +100,7 @@ class ProcessManager:
         process.stdout_fd = stdout_fd
         process.stderr_fd = stderr_fd
         self._set_non_blocking(stdin_fd, stdout_fd, stderr_fd)
-        process.watch_id = GLib.child_watch_add(
+        process.watch_id = GLib.child_watch_add(  # type: ignore[no-untyped-call]
             GLib.PRIORITY_DEFAULT,
             pid,
             self._on_child_exit,
@@ -277,7 +278,7 @@ class ProcessManager:
         *,
         message: str | None = None,
         exit_status: int | None = None,
-        error_contract: dict | None = None,
+        error_contract: dict[str, Any] | None = None,
     ) -> None:
         if self._event_callback is None:
             return

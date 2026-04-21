@@ -6,7 +6,8 @@ from typing import Any
 
 _DEFAULT_FORMAT = (
     "%(asctime)s %(levelname)s %(name)s "
-    "[session=%(session_id)s pid=%(process_pid)s agent=%(agent_id)s corr=%(correlation_id)s] %(message)s"
+    "[session=%(session_id)s pid=%(process_pid)s agent=%(agent_id)s "
+    "corr=%(correlation_id)s] %(message)s"
 )
 
 

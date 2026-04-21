@@ -4,11 +4,11 @@ gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Adw, Gtk
 
-from ui.components.terminal_pane import TerminalPane
-from ui.views.workspace import Workspace
-from ui.views.right_sidebar import AgentMonitorSidebar
+from core.models import Agent, ErrorContract
 from core.process_manager import ProcessState
-from core.models import ErrorContract, Agent
+from ui.components.terminal_pane import TerminalPane
+from ui.views.right_sidebar import AgentMonitorSidebar
+from ui.views.workspace import Workspace
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -59,9 +59,11 @@ class MainWindow(Adw.ApplicationWindow):
                 "import socket, time; "
                 "s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); "
                 "s.connect('/tmp/gemini-gui-ipc.sock'); "
-                "s.sendall(b'{\"agent_id\": \"master\", \"status\": \"running\", \"role\": \"orchestrator\"}\\n'); "
+                "s.sendall(b'{\"agent_id\": \"master\", \"status\": \"running\", "
+                "\"role\": \"orchestrator\"}\\n'); "
                 "time.sleep(2); "
-                "s.sendall(b'{\"agent_id\": \"master\", \"status\": \"finished\", \"role\": \"orchestrator\"}\\n'); "
+                "s.sendall(b'{\"agent_id\": \"master\", \"status\": \"finished\", "
+                "\"role\": \"orchestrator\"}\\n'); "
                 "time.sleep(100)"
             ]
             self.process_manager.spawn("test_session", cmd)
