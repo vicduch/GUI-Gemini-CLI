@@ -25,3 +25,19 @@ class Agent:
     id: str
     status: str
     role: str
+
+
+@dataclass
+class HistoryEntry:
+    id: str
+    title: str
+    timestamp: str
+    model: str
+
+
+@dataclass
+class Skill:
+    id: str
+    name: str
+    description: str
+    icon: str
