@@ -1,2 +1,1 @@
 """View layer widgets."""
-

@@ -5,6 +5,7 @@ import signal
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any
 
 from gi.repository import GLib
 
@@ -25,6 +26,7 @@ class ProcessState(StrEnum):
 class ProcessInfo:
     session_id: str
     command: tuple[str, ...]
+    correlation_id: str = ""
     state: ProcessState = ProcessState.STARTING
     pid: int | None = None
     stdin_fd: int | None = None
@@ -43,8 +45,10 @@ class ProcessEvent:
     event: str
     state: ProcessState
     pid: int | None
+    correlation_id: str = ""
     message: str | None = None
     exit_status: int | None = None
+    error_contract: dict[str, Any] | None = None
 
 
 class ProcessManager:
@@ -78,7 +82,7 @@ class ProcessManager:
         self._emit_event(process, "starting")
 
         try:
-            pid, stdin_fd, stdout_fd, stderr_fd = GLib.spawn_async(
+            pid, stdin_fd, stdout_fd, stderr_fd = GLib.spawn_async(  # type: ignore[no-untyped-call]
                 argv=list(command),
                 flags=self._spawn_flags,
                 standard_input=True,
@@ -96,7 +100,7 @@ class ProcessManager:
         process.stdout_fd = stdout_fd
         process.stderr_fd = stderr_fd
         self._set_non_blocking(stdin_fd, stdout_fd, stderr_fd)
-        process.watch_id = GLib.child_watch_add(
+        process.watch_id = GLib.child_watch_add(  # type: ignore[no-untyped-call]
             GLib.PRIORITY_DEFAULT,
             pid,
             self._on_child_exit,
@@ -161,6 +165,28 @@ class ProcessManager:
             return True
 
         return self.stop(session_id, timeout_ms=timeout_ms)
+
+    def restart_with_model(self, session_id: str, model_name: str) -> bool:
+        """Helper to hot-reload a session with a different model."""
+        process = self.processes.get(session_id)
+        if not process:
+            return False
+            
+        # Reconstruct command with new model
+        # Assuming command[0] is the executable and we want to replace or add --model
+        new_command = list(process.command)
+        
+        # Simple heuristic: if --model exists, replace its next arg. Else append.
+        try:
+            idx = new_command.index("--model")
+            if idx + 1 < len(new_command):
+                new_command[idx + 1] = model_name
+            else:
+                new_command.append(model_name)
+        except ValueError:
+            new_command.extend(["--model", model_name])
+            
+        return self.hot_reload(session_id, new_command)
 
     def stop_all(self) -> None:
         for session_id in list(self.processes):
@@ -274,6 +300,7 @@ class ProcessManager:
         *,
         message: str | None = None,
         exit_status: int | None = None,
+        error_contract: dict[str, Any] | None = None,
     ) -> None:
         if self._event_callback is None:
             return
@@ -282,8 +309,10 @@ class ProcessManager:
             event=event,
             state=process.state,
             pid=process.pid,
+            correlation_id=process.correlation_id,
             message=message,
             exit_status=exit_status,
+            error_contract=error_contract,
         )
         try:
             self._event_callback(payload)

@@ -1,4 +1,16 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from typing import Any
+
+
+@dataclass
+class ErrorContract:
+    code: str
+    message: str
+    severity: str
+    correlation_id: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 @dataclass
@@ -13,3 +25,19 @@ class Agent:
     id: str
     status: str
     role: str
+
+
+@dataclass
+class HistoryEntry:
+    id: str
+    title: str
+    timestamp: str
+    model: str
+
+
+@dataclass
+class Skill:
+    id: str
+    name: str
+    description: str
+    icon: str

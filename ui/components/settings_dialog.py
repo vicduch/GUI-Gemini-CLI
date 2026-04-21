@@ -1,0 +1,76 @@
+import gi
+
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+from gi.repository import Adw, GLib, Gtk
+from ui.style_utils import apply_theme
+
+
+class SettingsDialog(Adw.PreferencesWindow):
+    SAVE_DEBOUNCE_MS = 300
+
+    def __init__(self, config_manager, **kwargs):
+        super().__init__(**kwargs)
+        self.config_manager = config_manager
+        self._save_source_id: int | None = None
+        self.set_title("Settings")
+        self.connect("close-request", self._on_close_request)
+
+        # Page Appearance
+        page = Adw.PreferencesPage(title="Appearance", icon_name="display-brightness-symbolic")
+        self.add(page)
+
+        group = Adw.PreferencesGroup(title="Theme")
+        page.add(group)
+
+        # Theme selection
+        self.theme_row = Adw.ComboRow(title="Color Scheme")
+        self.theme_row.set_model(Gtk.StringList.new(["System", "Light", "Dark"]))
+        
+        # Initial value
+        current_theme = self.config_manager.get("theme", "System")
+        themes = ["System", "Light", "Dark"]
+        if current_theme in themes:
+            self.theme_row.set_selected(themes.index(current_theme))
+            
+        self.theme_row.connect("notify::selected", self._on_theme_changed)
+        group.add(self.theme_row)
+
+        # Page API
+        api_page = Adw.PreferencesPage(title="API", icon_name="network-server-symbolic")
+        self.add(api_page)
+        
+        api_group = Adw.PreferencesGroup(title="Gemini API")
+        api_page.add(api_group)
+        
+        self.api_key_row = Adw.EntryRow(title="API Key")
+        self.api_key_row.set_text(self.config_manager.get("api_key", ""))
+        self.api_key_row.connect("notify::text", self._on_api_key_changed)
+        api_group.add(self.api_key_row)
+
+    def _on_theme_changed(self, row, pspec):
+        selected = row.get_selected_item().get_string()
+        self.config_manager.set("theme", selected)
+        self._schedule_save()
+        apply_theme(selected)
+
+    def _on_api_key_changed(self, row, pspec):
+        self.config_manager.set("api_key", row.get_text())
+        self._schedule_save()
+
+    def _schedule_save(self) -> None:
+        if self._save_source_id is not None:
+            GLib.source_remove(self._save_source_id)
+        self._save_source_id = GLib.timeout_add(self.SAVE_DEBOUNCE_MS, self._flush_save)
+
+    def _flush_save(self) -> bool:
+        self._save_source_id = None
+        self.config_manager.save()
+        return False
+
+    def _on_close_request(self, *_args) -> bool:
+        if self._save_source_id is not None:
+            GLib.source_remove(self._save_source_id)
+            self._save_source_id = None
+            self.config_manager.save()
+        return False
