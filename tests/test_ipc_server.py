@@ -36,10 +36,9 @@ def _run_loop_until(predicate: Callable[[], bool], timeout_ms: int = 1200) -> No
 
 
 @pytest.fixture
-def socket_path() -> str:
-    socket_dir = Path.cwd() / ".tmp-test-ipc"
-    socket_dir.mkdir(parents=True, exist_ok=True)
-    return str(socket_dir / f"test_ipc_{uuid.uuid4().hex}.sock")
+def socket_path(tmp_path: Path) -> str:
+    # Use tmp_path to ensure a shorter path and automatic cleanup
+    return str(tmp_path / f"t_{uuid.uuid4().hex[:8]}.sock")
 
 
 @pytest.fixture
