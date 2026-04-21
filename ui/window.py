@@ -1,7 +1,7 @@
 import gi
 
-gi.require_version('Gtk', '4.0')
-gi.require_version('Adw', '1')
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk
 
 from core.models import Agent, ErrorContract
@@ -19,10 +19,10 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.set_title("Gemini GUI Orchestrator")
         self.set_default_size(1200, 800)
-        
+
         # Structure de base : Box horizontale contenant Sidebar G, Workspace, Sidebar D
         main_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        
+
         # Stub Sidebar Gauche
         left_sidebar = Gtk.Box(width_request=250)
         left_sidebar.append(Gtk.Label(label="History & Skills"))
@@ -34,7 +34,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Sidebar Droite (Agent Monitor)
         self.right_sidebar = AgentMonitorSidebar()
-        
+
         main_box.append(left_sidebar)
         main_box.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
         main_box.append(self.workspace)
@@ -47,34 +47,17 @@ class MainWindow(Adw.ApplicationWindow):
 
         if self.process_manager:
             self.process_manager.set_event_callback(self._on_process_event)
-        
+
         if self.ipc_server:
             self.ipc_server.set_callback(self._on_ipc_message)
-
-        # Lancement d'un processus test
-        if self.process_manager:
-            # On utilise python3 pour envoyer les messages IPC car socat n'est pas garanti
-            cmd = [
-                "python3", "-c",
-                "import socket, time; "
-                "s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); "
-                "s.connect('/tmp/gemini-gui-ipc.sock'); "
-                "s.sendall(b'{\"agent_id\": \"master\", \"status\": \"running\", "
-                "\"role\": \"orchestrator\"}\\n'); "
-                "time.sleep(2); "
-                "s.sendall(b'{\"agent_id\": \"master\", \"status\": \"finished\", "
-                "\"role\": \"orchestrator\"}\\n'); "
-                "time.sleep(100)"
-            ]
-            self.process_manager.spawn("test_session", cmd)
 
     def _on_process_event(self, event):
         if event.state == ProcessState.FAILED:
             err = ErrorContract(
-                code="PROC_FAIL", 
-                message=event.message or "Process died", 
-                severity="error", 
-                correlation_id=event.correlation_id
+                code="PROC_FAIL",
+                message=event.message or "Process died",
+                severity="error",
+                correlation_id=event.correlation_id,
             )
             # Dispatch au premier pane du workspace pour test
             if self.workspace.panes:
@@ -84,8 +67,8 @@ class MainWindow(Adw.ApplicationWindow):
         # Route to right sidebar
         if "agent_id" in message:
             agent = Agent(
-                id=message["agent_id"], 
-                status=message.get("status", "unknown"), 
-                role=message.get("role", "agent")
+                id=message["agent_id"],
+                status=message.get("status", "unknown"),
+                role=message.get("role", "agent"),
             )
             self.right_sidebar.update_agent(agent)
