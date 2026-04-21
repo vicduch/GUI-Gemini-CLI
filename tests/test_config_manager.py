@@ -29,3 +29,19 @@ def test_config_manager_nested_get(tmp_path):
     
     manager.set("ui", {"sidebar": {"width": 250}})
     assert manager.get("ui")["sidebar"]["width"] == 250
+
+def test_config_manager_save_no_parent(tmp_path):
+    # Test saving a config file in a directory that is the current working directory
+    # (i.e., os.path.dirname is empty)
+    import os
+    original_cwd = os.getcwd()
+    os.chdir(tmp_path)
+    try:
+        config_file = "local_config.json"
+        manager = ConfigManager(config_file)
+        manager.set("key", "value")
+        # This should not raise FileNotFoundError: [Errno 2] No such file or directory: ''
+        manager.save()
+        assert os.path.exists(config_file)
+    finally:
+        os.chdir(original_cwd)

@@ -3,6 +3,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk
+from ui.style_utils import apply_theme
 
 
 class SettingsDialog(Adw.PreferencesWindow):
@@ -47,16 +48,7 @@ class SettingsDialog(Adw.PreferencesWindow):
         selected = row.get_selected_item().get_string()
         self.config_manager.set("theme", selected)
         self.config_manager.save()
-        self._apply_theme(selected)
-
-    def _apply_theme(self, theme_name):
-        style_manager = Adw.StyleManager.get_default()
-        if theme_name == "Light":
-            style_manager.set_color_scheme(Adw.ColorScheme.FORCE_LIGHT)
-        elif theme_name == "Dark":
-            style_manager.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
-        else:
-            style_manager.set_color_scheme(Adw.ColorScheme.PREFER_LIGHT)
+        apply_theme(selected)
 
     def _on_api_key_changed(self, row, pspec):
         self.config_manager.set("api_key", row.get_text())

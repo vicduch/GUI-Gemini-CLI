@@ -152,6 +152,14 @@ class Workspace(Gtk.Stack):
         self.focus_bin.set_margin_top(vertical_margin)
         self.focus_bin.set_margin_bottom(vertical_margin)
 
+    def get_active_session_id(self) -> str | None:
+        """Returns the session_id of the active terminal."""
+        if self.focused_pane:
+            return self.focused_pane.session_id
+        if self.panes:
+            return self.panes[0].session_id
+        return None
+
     def _next_free_position(self) -> tuple[int, int]:
         used = set(self.pane_positions.values())
         index = 0

@@ -20,7 +20,9 @@ class ConfigManager:
             self.config = {}
 
     def save(self) -> None:
-        os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+        parent_dir = os.path.dirname(self.config_path)
+        if parent_dir:
+            os.makedirs(parent_dir, exist_ok=True)
         with open(self.config_path, "w") as f:
             json.dump(self.config, f, indent=4)
 

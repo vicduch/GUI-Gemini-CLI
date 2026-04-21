@@ -97,11 +97,13 @@ class MainWindow(Adw.ApplicationWindow):
         model_name = selected_item.get_string()
         logger.info(f"Model changed to: {model_name}")
         
-        if self.process_manager and self.workspace.panes:
-            # Pour le prototype, on redémarre la session du premier terminal visible
-            # Dans une version finale, chaque terminal pourrait avoir sa session/modèle
-            session_id = "default" # TODO: Get from terminal pane
-            self.process_manager.restart_with_model(session_id, model_name)
+        if self.process_manager:
+            session_id = self.workspace.get_active_session_id()
+            if session_id:
+                logger.info(f"Restarting session '{session_id}' with model {model_name}")
+                self.process_manager.restart_with_model(session_id, model_name)
+            else:
+                logger.warning("No active session found for hot-reload")
 
     def _on_settings_clicked(self, button):
         if not self.config_manager:

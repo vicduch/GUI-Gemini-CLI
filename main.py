@@ -11,6 +11,7 @@ from core.config_manager import ConfigManager
 from core.ipc_server import IpcServer
 from core.logging_utils import configure_logging
 from core.process_manager import ProcessManager
+from ui.style_utils import apply_theme
 from ui.window import MainWindow
 
 
@@ -25,7 +26,7 @@ class GeminiGuiApp(Adw.Application):
 
     def do_activate(self):
         self.ipc.start()
-        self._apply_theme()
+        apply_theme(self.config.get("theme", "System"))
         
         win = self.props.active_window
         if not win:
@@ -36,16 +37,6 @@ class GeminiGuiApp(Adw.Application):
                 config_manager=self.config
             )
         win.present()
-
-    def _apply_theme(self):
-        theme = self.config.get("theme", "System")
-        style_manager = Adw.StyleManager.get_default()
-        if theme == "Light":
-            style_manager.set_color_scheme(Adw.ColorScheme.FORCE_LIGHT)
-        elif theme == "Dark":
-            style_manager.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
-        else:
-            style_manager.set_color_scheme(Adw.ColorScheme.PREFER_LIGHT)
 
 
 if __name__ == "__main__":

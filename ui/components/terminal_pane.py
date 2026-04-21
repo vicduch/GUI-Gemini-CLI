@@ -9,8 +9,9 @@ from core.models import ErrorContract
 
 
 class TerminalPane(Gtk.Overlay):
-    def __init__(self, terminal_factory=None, **kwargs):
+    def __init__(self, terminal_factory=None, session_id="default", **kwargs):
         super().__init__(**kwargs)
+        self.session_id = session_id
 
         factory = terminal_factory or self._create_default_terminal
         self.terminal = factory()
