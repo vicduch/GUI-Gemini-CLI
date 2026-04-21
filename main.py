@@ -5,7 +5,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gio
+from gi.repository import Adw, Gio, GLib
 
 from core.config_manager import ConfigManager
 from core.ipc_server import IpcServer
@@ -20,7 +20,8 @@ class GeminiGuiApp(Adw.Application):
         super().__init__(
             application_id="org.gemini.GuiOrchestrator", flags=Gio.ApplicationFlags.FLAGS_NONE
         )
-        self.config = ConfigManager(os.path.expanduser("~/.config/gemini-gui/config.json"))
+        config_dir = os.path.join(GLib.get_user_config_dir(), "gemini-gui")
+        self.config = ConfigManager(os.path.join(config_dir, "config.json"))
         self.pm = ProcessManager()
         self.ipc = IpcServer("/tmp/gemini-gui-ipc.sock")
 

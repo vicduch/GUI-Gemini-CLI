@@ -6,6 +6,20 @@ from gi.repository import Adw, Gtk, Gio, GObject
 from ui.views.left_sidebar_models import GHistoryEntry, GSkill
 
 
+class SkillRow(Gtk.Box):
+    def __init__(self):
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        self.set_margin_start(12)
+        self.set_margin_end(12)
+        self.set_margin_top(6)
+        self.set_margin_bottom(6)
+
+        self.icon = Gtk.Image()
+        self.label = Gtk.Label(xalign=0)
+        self.append(self.icon)
+        self.append(self.label)
+
+
 class LeftSidebar(Gtk.Box):
     def __init__(self, **kwargs):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, **kwargs)
@@ -102,24 +116,11 @@ class LeftSidebar(Gtk.Box):
         return Adw.NavigationPage(child=box, title="Skills", tag="skills")
 
     def _on_skill_setup(self, factory, list_item):
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        box.set_margin_start(12)
-        box.set_margin_end(12)
-        box.set_margin_top(6)
-        box.set_margin_bottom(6)
-        
-        icon = Gtk.Image()
-        label = Gtk.Label(xalign=0)
-        
-        box.append(icon)
-        box.append(label)
-        list_item.set_child(box)
+        list_item.set_child(SkillRow())
 
     def _on_skill_bind(self, factory, list_item):
         item = list_item.get_item()
-        box = list_item.get_child()
-        icon = box.get_first_child()
-        label = icon.get_next_sibling()
-        
-        icon.set_from_icon_name(item.icon)
-        label.set_text(item.name)
+        row = list_item.get_child()
+
+        row.icon.set_from_icon_name(item.icon)
+        row.label.set_text(item.name)

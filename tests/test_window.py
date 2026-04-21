@@ -1,14 +1,16 @@
 import gi
 import pytest
+from types import SimpleNamespace
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk
 
 from unittest.mock import MagicMock
+from ui.components.terminal_pane import TerminalPane
 from ui.views.workspace import Workspace
 from ui.window import MainWindow
-from core.process_manager import ProcessManager
+from core.process_manager import ProcessManager, ProcessState
 
 pytestmark = pytest.mark.usefixtures("require_gtk_display")
 
@@ -70,3 +72,25 @@ def test_model_change_no_session_active(adw_app, fake_terminal_factory):
     
     # Verify pm.restart_with_model was NOT called
     pm.restart_with_model.assert_not_called()
+
+
+def test_process_error_routed_to_matching_session_pane(adw_app, fake_terminal_factory):
+    win = MainWindow(application=adw_app, terminal_factory=fake_terminal_factory)
+    first_pane = win.workspace.panes[0]
+    first_pane.session_id = "session-1"
+    first_pane.show_error = MagicMock()
+
+    second_pane = TerminalPane(terminal_factory=fake_terminal_factory, session_id="session-2")
+    second_pane.show_error = MagicMock()
+    win.workspace.add_pane(second_pane)
+
+    event = SimpleNamespace(
+        state=ProcessState.FAILED,
+        session_id="session-2",
+        message="boom",
+        correlation_id="corr-123",
+    )
+    win._on_process_event(event)
+
+    first_pane.show_error.assert_not_called()
+    second_pane.show_error.assert_called_once()

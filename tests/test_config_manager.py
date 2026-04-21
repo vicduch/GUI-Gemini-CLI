@@ -45,3 +45,12 @@ def test_config_manager_save_no_parent(tmp_path):
         assert os.path.exists(config_file)
     finally:
         os.chdir(original_cwd)
+
+
+def test_config_manager_load_non_object_json_defaults_to_empty_dict(tmp_path):
+    config_file = tmp_path / "config.json"
+    config_file.write_text('["not", "an", "object"]', encoding="utf-8")
+
+    manager = ConfigManager(str(config_file))
+
+    assert manager.config == {}

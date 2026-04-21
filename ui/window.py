@@ -85,9 +85,15 @@ class MainWindow(Adw.ApplicationWindow):
                 severity="error",
                 correlation_id=event.correlation_id,
             )
-            # Dispatch au premier pane du workspace pour test
-            if self.workspace.panes:
+            for pane in self.workspace.panes:
+                if pane.session_id == event.session_id:
+                    pane.show_error(err)
+                    return
+
+            if len(self.workspace.panes) == 1:
                 self.workspace.panes[0].show_error(err)
+            else:
+                logger.warning("No terminal pane found for failed session_id=%s", event.session_id)
 
     def _on_model_changed(self, dropdown, pspec):
         selected_item = dropdown.get_selected_item()

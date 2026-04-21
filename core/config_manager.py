@@ -12,8 +12,9 @@ class ConfigManager:
     def load(self) -> None:
         if os.path.exists(self.config_path):
             try:
-                with open(self.config_path, "r") as f:
-                    self.config = json.load(f)
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    self.config = data if isinstance(data, dict) else {}
             except (json.JSONDecodeError, OSError):
                 self.config = {}
         else:
@@ -23,7 +24,7 @@ class ConfigManager:
         parent_dir = os.path.dirname(self.config_path)
         if parent_dir:
             os.makedirs(parent_dir, exist_ok=True)
-        with open(self.config_path, "w") as f:
+        with open(self.config_path, "w", encoding="utf-8") as f:
             json.dump(self.config, f, indent=4)
 
     def get(self, key: str, default: Any = None) -> Any:
