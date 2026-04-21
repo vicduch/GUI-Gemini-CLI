@@ -8,6 +8,7 @@ from core.logging_utils import get_logger
 from core.models import Agent, ErrorContract
 from core.process_manager import ProcessState
 from ui.components.terminal_pane import TerminalPane
+from ui.components.settings_dialog import SettingsDialog
 from ui.views.left_sidebar import LeftSidebar
 from ui.views.right_sidebar import AgentMonitorSidebar
 from ui.views.workspace import Workspace
@@ -16,10 +17,11 @@ logger = get_logger(__name__)
 
 
 class MainWindow(Adw.ApplicationWindow):
-    def __init__(self, process_manager=None, ipc_server=None, terminal_factory=None, **kwargs):
+    def __init__(self, process_manager=None, ipc_server=None, terminal_factory=None, config_manager=None, **kwargs):
         super().__init__(**kwargs)
         self.process_manager = process_manager
         self.ipc_server = ipc_server
+        self.config_manager = config_manager
 
         self.set_title("Gemini GUI Orchestrator")
         self.set_default_size(1200, 800)
@@ -35,6 +37,12 @@ class MainWindow(Adw.ApplicationWindow):
         self.model_dropdown.set_valign(Gtk.Align.CENTER)
         self.model_dropdown.connect("notify::selected", self._on_model_changed)
         header.pack_start(self.model_dropdown)
+        
+        # Settings Button
+        settings_btn = Gtk.Button(icon_name="emblem-system-symbolic")
+        settings_btn.set_tooltip_text("Settings")
+        settings_btn.connect("clicked", self._on_settings_clicked)
+        header.pack_end(settings_btn)
         
         toolbar_view.add_top_bar(header)
 
@@ -94,6 +102,12 @@ class MainWindow(Adw.ApplicationWindow):
             # Dans une version finale, chaque terminal pourrait avoir sa session/modèle
             session_id = "default" # TODO: Get from terminal pane
             self.process_manager.restart_with_model(session_id, model_name)
+
+    def _on_settings_clicked(self, button):
+        if not self.config_manager:
+            return
+        dialog = SettingsDialog(self.config_manager, transient_for=self)
+        dialog.present()
 
     def _on_ipc_message(self, message: dict):
         # Route to right sidebar
