@@ -52,11 +52,11 @@ def test_model_change_triggers_hot_reload_with_real_session(adw_app, fake_termin
     
     # Trigger model change
     # Note: notify::selected is emitted when selection changes.
-    # Initially 0 (gemini-1.5-pro). Change to 1 (gemini-1.5-flash).
+    # Fallback list: ["gemini-1.5-pro", "gemini-3-flash", "gemini-2.0-flash-exp"]
     win.model_dropdown.set_selected(1)
     
-    # Verify pm.restart_with_model was called with real-session-123
-    pm.restart_with_model.assert_called_with("real-session-123", "gemini-1.5-flash")
+    # Verify pm.restart_with_model was called with real-session-123 and gemini-3-flash
+    pm.restart_with_model.assert_called_with("real-session-123", "gemini-3-flash")
 
 
 def test_model_change_no_session_active(adw_app, fake_terminal_factory):

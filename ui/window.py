@@ -39,7 +39,11 @@ class MainWindow(Adw.ApplicationWindow):
         header.pack_start(self.toggle_left)
 
         # Model Selection DropDown
-        models = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.0-flash-exp"]
+        if self.config_manager:
+            models = self.config_manager.get("available_models", ["gemini-3.1-pro"])
+        else:
+            models = ["gemini-1.5-pro", "gemini-3-flash", "gemini-2.0-flash-exp"]
+        
         self.model_dropdown = Gtk.DropDown.new_from_strings(models)
         self.model_dropdown.set_valign(Gtk.Align.CENTER)
         self.model_dropdown.connect("notify::selected", self._on_model_changed)
