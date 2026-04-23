@@ -23,7 +23,6 @@ class SkillRow(Gtk.Box):
 class LeftSidebar(Gtk.Box):
     def __init__(self, **kwargs):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, **kwargs)
-        self.set_size_request(250, -1)
 
         self.nav_view = Adw.NavigationView()
         self.append(self.nav_view)

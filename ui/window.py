@@ -2,7 +2,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, Gtk, GObject
 
 from core.logging_utils import get_logger
 from core.models import Agent, ErrorContract
@@ -32,6 +32,12 @@ class MainWindow(Adw.ApplicationWindow):
         
         header = Adw.HeaderBar()
         
+        # Sidebar Toggles
+        self.toggle_left = Gtk.ToggleButton(icon_name="sidebar-show-symbolic")
+        self.toggle_left.set_active(True)
+        self.toggle_left.set_tooltip_text("Toggle Left Sidebar")
+        header.pack_start(self.toggle_left)
+
         # Model Selection DropDown
         models = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.0-flash-exp"]
         self.model_dropdown = Gtk.DropDown.new_from_strings(models)
@@ -39,6 +45,12 @@ class MainWindow(Adw.ApplicationWindow):
         self.model_dropdown.connect("notify::selected", self._on_model_changed)
         header.pack_start(self.model_dropdown)
         
+        # Right Sidebar Toggle
+        self.toggle_right = Gtk.ToggleButton(icon_name="sidebar-show-right-symbolic")
+        self.toggle_right.set_active(True)
+        self.toggle_right.set_tooltip_text("Toggle Right Sidebar")
+        header.pack_end(self.toggle_right)
+
         # Settings Button
         settings_btn = Gtk.Button(icon_name="emblem-system-symbolic")
         settings_btn.set_tooltip_text("Settings")
@@ -46,9 +58,6 @@ class MainWindow(Adw.ApplicationWindow):
         header.pack_end(settings_btn)
         
         toolbar_view.add_top_bar(header)
-
-        # Structure de base : Box horizontale contenant Sidebar G, Workspace, Sidebar D
-        main_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
 
         # Sidebar Gauche (History & Skills)
         self.left_sidebar = LeftSidebar()
@@ -62,13 +71,21 @@ class MainWindow(Adw.ApplicationWindow):
         # Sidebar Droite (Agent Monitor)
         self.right_sidebar = AgentMonitorSidebar()
 
-        main_box.append(self.left_sidebar)
-        main_box.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
-        main_box.append(self.workspace)
-        main_box.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
-        main_box.append(self.right_sidebar)
+        # Imbrication des SplitViews pour les barres latérales
+        self.left_split_view = Adw.OverlaySplitView()
+        self.left_split_view.set_sidebar(self.left_sidebar)
+        self.left_split_view.set_content(self.workspace)
+        self.left_split_view.set_min_sidebar_width(250)
+        self.left_split_view.bind_property("show-sidebar", self.toggle_left, "active", GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
 
-        toolbar_view.set_content(main_box)
+        self.right_split_view = Adw.OverlaySplitView()
+        self.right_split_view.set_sidebar_position(Gtk.PackType.END)
+        self.right_split_view.set_sidebar(self.right_sidebar)
+        self.right_split_view.set_content(self.left_split_view)
+        self.right_split_view.set_min_sidebar_width(300)
+        self.right_split_view.bind_property("show-sidebar", self.toggle_right, "active", GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
+
+        toolbar_view.set_content(self.right_split_view)
         self.set_content(toolbar_view)
 
         self.workspace.add_pane(TerminalPane(terminal_factory=terminal_factory))

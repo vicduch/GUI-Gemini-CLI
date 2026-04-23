@@ -22,7 +22,6 @@ class AgentItem(GObject.Object):
 class AgentMonitorSidebar(Gtk.Box):
     def __init__(self, **kwargs):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, **kwargs)
-        self.set_size_request(300, -1)
         self.store = Gio.ListStore(item_type=AgentItem)
         self._agent_cache: dict[str, AgentItem] = {}
 
