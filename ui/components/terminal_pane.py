@@ -17,19 +17,23 @@ class TerminalPane(Gtk.Box):
     def __init__(self, terminal_factory=None, session_id="default", available_models=None, **kwargs):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, **kwargs)
         self.session_id = session_id
-        self.available_models = available_models or ["gemini-3.1-pro", "gemini-3-flash"]
+        self.available_models = available_models or [
+            "gemini-3.1-pro-preview",
+            "gemini-3-flash-preview",
+        ]
 
         # 1. Header Bar
-        self.header_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.header_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         self.header_bar.add_css_class("terminal-header")
-        self.header_bar.set_margin_start(6)
-        self.header_bar.set_margin_end(6)
-        self.header_bar.set_margin_top(4)
-        self.header_bar.set_margin_bottom(4)
+        self.header_bar.set_margin_start(4)
+        self.header_bar.set_margin_end(4)
+        self.header_bar.set_margin_top(2)
+        self.header_bar.set_margin_bottom(2)
 
         # Label Session/Model
         self.title_label = Gtk.Label(label=f"Session: {session_id}")
         self.title_label.add_css_class("caption")
+        self.title_label.add_css_class("dim-label")
         self.header_bar.append(self.title_label)
 
         # Spacer
@@ -63,9 +67,6 @@ class TerminalPane(Gtk.Box):
         self.terminal.set_hexpand(True)
         self.terminal.set_vexpand(True)
 
-        if isinstance(self.terminal, Vte.Terminal):
-            self._spawn_gemini_cli()
-
         self.terminal_overlay.set_child(self.terminal)
 
         # Bannière d'erreur (Overlay)
@@ -81,9 +82,26 @@ class TerminalPane(Gtk.Box):
             model_name = selected_item.get_string()
             self.emit("model-changed", model_name)
 
-    def _spawn_gemini_cli(self):
+    def spawn_process(self, command: list[str], on_spawned=None, on_exited=None):
         """Spawns the gemini-cli process inside the VTE terminal."""
-        command = ["gemini-cli"]
+        if not isinstance(self.terminal, Vte.Terminal):
+            return
+
+        def _spawn_cb(terminal, pid, error, _user_data):
+            if error:
+                err = ErrorContract(code="SPAWN_FAIL", message=error.message, severity="error", correlation_id="")
+                self.show_error(err)
+            elif on_spawned:
+                on_spawned(pid)
+
+        def _exit_cb(terminal, status):
+            if on_exited:
+                on_exited(status)
+
+        # Clear previous signal if any
+        if hasattr(self, "_exit_handler_id"):
+            self.terminal.disconnect(self._exit_handler_id)
+        self._exit_handler_id = self.terminal.connect("child-exited", _exit_cb)
 
         self.terminal.spawn_async(
             Vte.PtyFlags.DEFAULT,
@@ -95,7 +113,7 @@ class TerminalPane(Gtk.Box):
             None,  # child_setup_data
             -1,    # timeout
             None,  # cancellable
-            None,  # callback
+            _spawn_cb,
             None   # user_data
         )
 

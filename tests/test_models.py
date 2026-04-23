@@ -18,9 +18,9 @@ def test_error_contract_serialization():
 
 
 def test_session_creation():
-    session = Session(id="sess-1", model="gemini-3.1-pro", workspace="/tmp")
+    session = Session(id="sess-1", model="gemini-3.1-pro-preview", workspace="/tmp")
     assert session.id == "sess-1"
-    assert session.model == "gemini-3.1-pro"
+    assert session.model == "gemini-3.1-pro-preview"
 
 
 def test_agent_creation():

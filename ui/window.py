@@ -54,9 +54,15 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Get available models
         if self.config_manager:
-            self.available_models = self.config_manager.get("available_models", ["gemini-3.1-pro"])
+            self.available_models = self.config_manager.get("available_models", ["gemini-3.1-pro-preview"])
         else:
-            self.available_models = ["gemini-3.1-pro", "gemini-3-flash", "gemini-3.1-flash-lite"]
+            self.available_models = [
+                "gemini-3.1-pro-preview",
+                "gemini-3-flash-preview",
+                "gemini-3.1-flash-lite-preview",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
+            ]
 
         # Sidebar Gauche (History & Skills)
         self.left_sidebar = LeftSidebar()
@@ -97,6 +103,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         if self.process_manager:
             self.process_manager.set_event_callback(self._on_process_event)
+            self.process_manager.spawn(pane.session_id, ["gemini"])
 
         if self.ipc_server:
             self.ipc_server.set_callback(self._on_ipc_message)
@@ -108,6 +115,8 @@ class MainWindow(Adw.ApplicationWindow):
         )
         pane.connect("model-changed", self._on_pane_model_changed)
         self.workspace.add_pane(pane, replace_slot=slot)
+        if self.process_manager:
+            self.process_manager.spawn(pane.session_id, ["gemini"])
 
     def _on_process_event(self, event):
         if event.state == ProcessState.FAILED:
@@ -126,11 +135,24 @@ class MainWindow(Adw.ApplicationWindow):
                 self.workspace.panes[0].show_error(err)
             else:
                 logger.warning("No terminal pane found for failed session_id=%s", event.session_id)
+        elif event.event == "spawn_requested":
+            process = self.process_manager.processes.get(event.session_id)
+            if not process:
+                return
+            for pane in self.workspace.panes:
+                if pane.session_id == event.session_id:
+                    pane.spawn_process(
+                        list(process.command),
+                        on_spawned=lambda pid: self.process_manager.attach_pid(event.session_id, pid),
+                        on_exited=lambda status: self.process_manager.mark_exited(event.session_id, status)
+                    )
+                    break
 
     def _on_pane_model_changed(self, pane, model_name):
-        logger.info(f"Model changed for session '{pane.session_id}' to: {model_name}")
-        if self.process_manager:
-            self.process_manager.restart_with_model(pane.session_id, model_name)
+        logger.info(f"Injecting /model command for session '{pane.session_id}' to: {model_name}")
+        command = f"/model {model_name}\n"
+        if hasattr(pane.terminal, 'feed_child'):
+            pane.terminal.feed_child(command.encode("utf-8"))
 
     def _on_settings_clicked(self, button):
         if not self.config_manager:

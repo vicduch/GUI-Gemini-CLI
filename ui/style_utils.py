@@ -31,6 +31,19 @@ def load_css() -> None:
             border-color: alpha(@theme_fg_color, 0.4);
             background-color: alpha(@theme_bg_color, 0.8);
         }
+        .terminal-header {
+            min-height: 24px;
+            padding: 0;
+            background-color: alpha(@theme_fg_color, 0.05);
+            border-bottom: 1px solid alpha(@theme_fg_color, 0.1);
+        }
+        .terminal-header button, .terminal-header dropdown {
+            padding: 2px 6px;
+            min-height: 20px;
+        }
+        .terminal-header label {
+            font-size: 0.8rem;
+        }
     """)
     Gtk.StyleContext.add_provider_for_display(
         Gdk.Display.get_default(),

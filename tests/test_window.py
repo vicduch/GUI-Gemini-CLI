@@ -26,7 +26,11 @@ def adw_app():
 
 @pytest.fixture
 def fake_terminal_factory():
-    return lambda: Gtk.TextView()
+    def _factory():
+        term = Gtk.TextView()
+        term.feed_child = MagicMock()
+        return term
+    return _factory
 
 
 def test_main_window_instantiation(adw_app, fake_terminal_factory):
@@ -38,11 +42,16 @@ def test_main_window_instantiation(adw_app, fake_terminal_factory):
 
 def test_window_has_workspace(adw_app, fake_terminal_factory):
     window = MainWindow(application=adw_app, terminal_factory=fake_terminal_factory)
-    assert hasattr(window, "workspace")
     assert isinstance(window.workspace, Workspace)
 
 
-def test_model_change_triggers_hot_reload_with_real_session(adw_app, fake_terminal_factory):
+def test_window_spawns_default_session_on_startup(adw_app, fake_terminal_factory):
+    pm = MagicMock(spec=ProcessManager)
+    win = MainWindow(application=adw_app, process_manager=pm, terminal_factory=fake_terminal_factory)
+    pm.spawn.assert_called_once()
+
+
+def test_model_change_injects_command_with_real_session(adw_app, fake_terminal_factory):
     pm = MagicMock(spec=ProcessManager)
     win = MainWindow(application=adw_app, process_manager=pm, terminal_factory=fake_terminal_factory)
     
@@ -51,11 +60,11 @@ def test_model_change_triggers_hot_reload_with_real_session(adw_app, fake_termin
     pane.session_id = "real-session-123"
     
     # Trigger model change on the pane
-    # Fallback list: ["gemini-3.1-pro", "gemini-3-flash", "gemini-3.1-flash-lite"]
+    # Fallback list: gemini-3.1-pro-preview, gemini-3-flash-preview, etc.
     pane.model_dropdown.set_selected(1)
     
-    # Verify pm.restart_with_model was called with real-session-123 and gemini-3-flash
-    pm.restart_with_model.assert_called_with("real-session-123", "gemini-3-flash")
+    # Verify feed_child was called with the /model command
+    pane.terminal.feed_child.assert_called_with(b"/model gemini-3-flash-preview\n")
 
 
 def test_model_change_no_session_active(adw_app, fake_terminal_factory):
@@ -89,7 +98,7 @@ def test_model_dropdown_populated_from_config(adw_app, fake_terminal_factory):
         model_list.append(item.get_string())
     
     assert model_list == custom_models
-    cm.get.assert_called_with("available_models", ["gemini-3.1-pro"])
+    cm.get.assert_called_with("available_models", ["gemini-3.1-pro-preview"])
 
 
 def test_process_error_routed_to_matching_session_pane(adw_app, fake_terminal_factory):

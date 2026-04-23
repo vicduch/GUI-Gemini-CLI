@@ -22,7 +22,7 @@ class GeminiGuiApp(Adw.Application):
         )
         config_dir = os.path.join(GLib.get_user_config_dir(), "gemini-gui")
         self.config = ConfigManager(os.path.join(config_dir, "config.json"))
-        self.pm = ProcessManager()
+        self.pm = ProcessManager(delegate_spawn=True)
         self.ipc = IpcServer("/tmp/gemini-gui-ipc.sock")
 
     def do_activate(self):

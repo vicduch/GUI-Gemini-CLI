@@ -88,9 +88,10 @@ def test_terminal_pane_spawns_gemini_cli(monkeypatch):
 
     # On utilise le terminal par défaut (Vte.Terminal)
     pane = TerminalPane(session_id="test-session")
-    
+    pane.spawn_process(["gemini", "cli"])
+
     # On vérifie que spawn_async a été appelé
     assert spawn_called is True
-    assert spawn_argv is not None
+    assert spawn_argv == ["gemini", "cli"]
     assert "gemini-cli" in spawn_argv[0] or "gemini" in spawn_argv[0]
 

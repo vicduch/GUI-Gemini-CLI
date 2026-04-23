@@ -2,7 +2,13 @@ import json
 import os
 from typing import Any
 
-DEFAULT_MODELS = ["gemini-3.1-pro", "gemini-3-flash", "gemini-3.1-flash-lite"]
+DEFAULT_MODELS = [
+    "gemini-3.1-pro-preview",
+    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite-preview",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+]
 
 
 class ConfigManager:
