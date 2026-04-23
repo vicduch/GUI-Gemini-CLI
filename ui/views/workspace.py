@@ -3,22 +3,32 @@ from __future__ import annotations
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk
+from gi.repository import Gtk, GObject
 
+from ui.components.empty_slot import EmptySlot
 from ui.components.terminal_pane import TerminalPane
 
 
 class Workspace(Gtk.Stack):
-    def __init__(self, columns: int = 2, **kwargs):
+    __gsignals__ = {
+        "slot-requested": (GObject.SignalFlags.RUN_FIRST, None, (object,)),
+    }
+
+    def __init__(self, columns: int = 2, rows: int = 2, **kwargs):
         super().__init__(**kwargs)
         self.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
 
         self._columns = max(columns, 1)
+        self._rows = max(rows, 1)
         self._is_transitioning = False
 
         self.panes: list[TerminalPane] = []
         self.pane_positions: dict[TerminalPane, tuple[int, int]] = {}
+        self.empty_slots: list[EmptySlot] = []
+        self.empty_slot_positions: dict[EmptySlot, tuple[int, int]] = {}
+        
         self._zoom_handler_ids: dict[TerminalPane, int] = {}
+        self._slot_clicked_handler_ids: dict[EmptySlot, int] = {}
         self.focused_pane: TerminalPane | None = None
 
         self.grid = Gtk.Grid()
@@ -49,17 +59,52 @@ class Workspace(Gtk.Stack):
         self.set_visible_child_name("grid_page")
         self.connect("notify::visible-child-name", self._on_visible_page_changed)
 
-    def add_pane(self, pane: TerminalPane) -> None:
+        self._init_empty_slots()
+
+    def _init_empty_slots(self) -> None:
+        for row in range(self._rows):
+            for col in range(self._columns):
+                slot = EmptySlot()
+                self.empty_slots.append(slot)
+                self.empty_slot_positions[slot] = (col, row)
+                self.grid.attach(slot, col, row, 1, 1)
+                handler_id = slot.connect("slot-clicked", self._on_slot_clicked, slot)
+                self._slot_clicked_handler_ids[slot] = handler_id
+
+    def _on_slot_clicked(self, _widget: EmptySlot, slot: EmptySlot) -> None:
+        self.emit("slot-requested", slot)
+
+    def add_pane(self, pane: TerminalPane, replace_slot: EmptySlot | None = None) -> bool:
         if pane in self.panes:
-            return
+            return False
+
+        if replace_slot and replace_slot in self.empty_slots:
+            col, row = self.empty_slot_positions[replace_slot]
+            self._remove_empty_slot(replace_slot)
+        elif self.empty_slots:
+            # Replaces the first available empty slot
+            slot = self.empty_slots[0]
+            col, row = self.empty_slot_positions[slot]
+            self._remove_empty_slot(slot)
+        else:
+            # Grid is full (all slots taken)
+            return False
 
         self.panes.append(pane)
-        col, row = self._next_free_position()
         self.pane_positions[pane] = (col, row)
         self.grid.attach(pane, col, row, 1, 1)
 
         handler_id = pane.zoom_button.connect("clicked", self._on_zoom_clicked, pane)
         self._zoom_handler_ids[pane] = handler_id
+        return True
+
+    def _remove_empty_slot(self, slot: EmptySlot) -> None:
+        self.grid.remove(slot)
+        handler_id = self._slot_clicked_handler_ids.pop(slot, None)
+        if handler_id is not None:
+            slot.disconnect(handler_id)
+        self.empty_slots.remove(slot)
+        self.empty_slot_positions.pop(slot, None)
 
     def remove_pane(self, pane: TerminalPane) -> bool:
         if pane not in self.panes:
@@ -78,7 +123,16 @@ class Workspace(Gtk.Stack):
             pane.zoom_button.disconnect(handler_id)
 
         self.panes.remove(pane)
-        self.pane_positions.pop(pane, None)
+        col, row = self.pane_positions.pop(pane)
+        
+        # Add back the empty slot
+        slot = EmptySlot()
+        self.empty_slots.append(slot)
+        self.empty_slot_positions[slot] = (col, row)
+        self.grid.attach(slot, col, row, 1, 1)
+        handler_id = slot.connect("slot-clicked", self._on_slot_clicked, slot)
+        self._slot_clicked_handler_ids[slot] = handler_id
+
         return True
 
     def focus_pane(self, pane: TerminalPane) -> None:
@@ -117,8 +171,7 @@ class Workspace(Gtk.Stack):
             if pane.get_parent() is self.focus_bin:
                 self.focus_bin.remove(pane)
 
-            col, row = self.pane_positions.get(pane, self._next_free_position())
-            self.pane_positions[pane] = (col, row)
+            col, row = self.pane_positions[pane]
             self.grid.attach(pane, col, row, 1, 1)
 
             self.focused_pane = None
@@ -159,13 +212,3 @@ class Workspace(Gtk.Stack):
         if self.panes:
             return self.panes[0].session_id
         return None
-
-    def _next_free_position(self) -> tuple[int, int]:
-        used = set(self.pane_positions.values())
-        index = 0
-        while True:
-            col = index % self._columns
-            row = index // self._columns
-            if (col, row) not in used:
-                return col, row
-            index += 1

@@ -22,6 +22,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.process_manager = process_manager
         self.ipc_server = ipc_server
         self.config_manager = config_manager
+        self.terminal_factory = terminal_factory
 
         self.set_title("Gemini GUI Orchestrator")
         self.set_default_size(1200, 800)
@@ -56,6 +57,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.workspace = Workspace()
         self.workspace.set_hexpand(True)
         self.workspace.set_vexpand(True)
+        self.workspace.connect("slot-requested", self._on_slot_requested)
 
         # Sidebar Droite (Agent Monitor)
         self.right_sidebar = AgentMonitorSidebar()
@@ -76,6 +78,10 @@ class MainWindow(Adw.ApplicationWindow):
 
         if self.ipc_server:
             self.ipc_server.set_callback(self._on_ipc_message)
+
+    def _on_slot_requested(self, _workspace, slot):
+        pane = TerminalPane(terminal_factory=self.terminal_factory)
+        self.workspace.add_pane(pane, replace_slot=slot)
 
     def _on_process_event(self, event):
         if event.state == ProcessState.FAILED:

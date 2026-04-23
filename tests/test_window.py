@@ -94,3 +94,15 @@ def test_process_error_routed_to_matching_session_pane(adw_app, fake_terminal_fa
 
     first_pane.show_error.assert_not_called()
     second_pane.show_error.assert_called_once()
+
+def test_window_slot_requested_adds_terminal_pane(adw_app, fake_terminal_factory):
+    win = MainWindow(application=adw_app, terminal_factory=fake_terminal_factory)
+    initial_panes = len(win.workspace.panes)
+    
+    assert len(win.workspace.empty_slots) > 0
+    slot = win.workspace.empty_slots[0]
+    
+    win.workspace.emit("slot-requested", slot)
+    
+    assert len(win.workspace.panes) == initial_panes + 1
+    assert slot not in win.workspace.empty_slots

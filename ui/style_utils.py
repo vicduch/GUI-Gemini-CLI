@@ -1,7 +1,8 @@
 import gi
 
 gi.require_version("Adw", "1")
-from gi.repository import Adw
+gi.require_version("Gtk", "4.0")
+from gi.repository import Adw, Gtk, Gdk
 
 
 def get_color_scheme_for_name(theme_name: str) -> Adw.ColorScheme:
@@ -16,3 +17,23 @@ def get_color_scheme_for_name(theme_name: str) -> Adw.ColorScheme:
 def apply_theme(theme_name: str) -> None:
     style_manager = Adw.StyleManager.get_default()
     style_manager.set_color_scheme(get_color_scheme_for_name(theme_name))
+
+
+def load_css() -> None:
+    css_provider = Gtk.CssProvider()
+    css_provider.load_from_data(b"""
+        .empty-slot {
+            border: 2px dashed alpha(@theme_fg_color, 0.2);
+            border-radius: 12px;
+            background-color: alpha(@theme_bg_color, 0.5);
+        }
+        .empty-slot:hover {
+            border-color: alpha(@theme_fg_color, 0.4);
+            background-color: alpha(@theme_bg_color, 0.8);
+        }
+    """)
+    Gtk.StyleContext.add_provider_for_display(
+        Gdk.Display.get_default(),
+        css_provider,
+        Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+    )
