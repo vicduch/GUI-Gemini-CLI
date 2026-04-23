@@ -149,8 +149,9 @@ class MainWindow(Adw.ApplicationWindow):
                     break
 
     def _on_pane_model_changed(self, pane, model_name):
-        logger.info(f"Injecting /model command for session '{pane.session_id}' to: {model_name}")
-        command = f"/model {model_name}\n"
+        logger.info(f"Injecting /model set command for session '{pane.session_id}' to: {model_name}")
+        # Send '/model set <model_name>' followed by ENTER
+        command = f"/model set {model_name}\n"
         if hasattr(pane.terminal, 'feed_child'):
             pane.terminal.feed_child(command.encode("utf-8"))
 
