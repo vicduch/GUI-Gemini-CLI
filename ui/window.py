@@ -42,7 +42,7 @@ class MainWindow(Adw.ApplicationWindow):
         if self.config_manager:
             models = self.config_manager.get("available_models", ["gemini-3.1-pro"])
         else:
-            models = ["gemini-1.5-pro", "gemini-3-flash", "gemini-2.0-flash-exp"]
+            models = ["gemini-3.1-pro", "gemini-3-flash", "gemini-3.1-flash-lite"]
         
         self.model_dropdown = Gtk.DropDown.new_from_strings(models)
         self.model_dropdown.set_valign(Gtk.Align.CENTER)
