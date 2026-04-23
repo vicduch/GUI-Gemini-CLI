@@ -6,6 +6,7 @@ gi.require_version("Vte", "3.91")
 from gi.repository import Adw, Gtk, Vte, GLib, GObject
 
 from core.models import ErrorContract
+from ui.style_utils import LayoutConstants
 
 
 class TerminalPane(Gtk.Box):
@@ -21,14 +22,16 @@ class TerminalPane(Gtk.Box):
             "gemini-3.1-pro-preview",
             "gemini-3-flash-preview",
         ]
+        self._command_queue: list[str] = []
+        self._is_spawned = False
 
         # 1. Header Bar
-        self.header_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        self.header_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=LayoutConstants.TERMINAL_HEADER_SPACING)
         self.header_bar.add_css_class("terminal-header")
-        self.header_bar.set_margin_start(4)
-        self.header_bar.set_margin_end(4)
-        self.header_bar.set_margin_top(2)
-        self.header_bar.set_margin_bottom(2)
+        self.header_bar.set_margin_start(LayoutConstants.TERMINAL_HEADER_MARGIN_H)
+        self.header_bar.set_margin_end(LayoutConstants.TERMINAL_HEADER_MARGIN_H)
+        self.header_bar.set_margin_top(LayoutConstants.TERMINAL_HEADER_MARGIN_V)
+        self.header_bar.set_margin_bottom(LayoutConstants.TERMINAL_HEADER_MARGIN_V)
 
         # Label Session/Model
         self.title_label = Gtk.Label(label=f"Session: {session_id}")
@@ -82,26 +85,44 @@ class TerminalPane(Gtk.Box):
             model_name = selected_item.get_string()
             self.emit("model-changed", model_name)
 
+    def inject_command(self, command: str):
+        """Injects a command into the terminal, buffering it if the process isn't ready."""
+        if self._is_spawned and hasattr(self.terminal, 'feed_child'):
+            self.terminal.feed_child(command.encode("utf-8"))
+        else:
+            self._command_queue.append(command)
+
     def spawn_process(self, command: list[str], on_spawned=None, on_exited=None):
         """Spawns the gemini-cli process inside the VTE terminal."""
-        if not isinstance(self.terminal, Vte.Terminal):
+        if not hasattr(self.terminal, 'spawn_async'):
             return
 
         def _spawn_cb(terminal, pid, error, _user_data):
             if error:
                 err = ErrorContract(code="SPAWN_FAIL", message=error.message, severity="error", correlation_id="")
                 self.show_error(err)
-            elif on_spawned:
-                on_spawned(pid)
+            else:
+                self._is_spawned = True
+                # Flush queued commands
+                if hasattr(self.terminal, 'feed_child'):
+                    for cmd in self._command_queue:
+                        self.terminal.feed_child(cmd.encode("utf-8"))
+                self._command_queue.clear()
+                
+                if on_spawned:
+                    on_spawned(pid)
 
         def _exit_cb(terminal, status):
+            self._is_spawned = False
             if on_exited:
                 on_exited(status)
 
         # Clear previous signal if any
         if hasattr(self, "_exit_handler_id"):
             self.terminal.disconnect(self._exit_handler_id)
-        self._exit_handler_id = self.terminal.connect("child-exited", _exit_cb)
+        
+        if isinstance(self.terminal, Vte.Terminal):
+            self._exit_handler_id = self.terminal.connect("child-exited", _exit_cb)
 
         self.terminal.spawn_async(
             Vte.PtyFlags.DEFAULT,

@@ -29,6 +29,7 @@ def fake_terminal_factory():
     def _factory():
         term = Gtk.TextView()
         term.feed_child = MagicMock()
+        term.spawn_async = MagicMock()
         return term
     return _factory
 
@@ -63,7 +64,15 @@ def test_model_change_injects_command_with_real_session(adw_app, fake_terminal_f
     # Fallback list: gemini-3.1-pro-preview, gemini-3-flash-preview, etc.
     pane.model_dropdown.set_selected(1)
     
-    # Verify feed_child was called with the /model set command using \r
+    # Verify feed_child was NOT called yet due to buffering
+    pane.terminal.feed_child.assert_not_called()
+
+    # Simulate spawn completion to flush buffer
+    pane.spawn_process(["gemini"])
+    args, _ = pane.terminal.spawn_async.call_args
+    args[9](pane.terminal, 1234, None, None) # call _spawn_cb
+    
+    # Now verify feed_child was called with the /model set command using \r
     pane.terminal.feed_child.assert_called_with(b"/model set gemini-3-flash-preview\r")
 
 

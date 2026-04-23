@@ -12,6 +12,7 @@ from ui.components.settings_dialog import SettingsDialog
 from ui.views.left_sidebar import LeftSidebar
 from ui.views.right_sidebar import AgentMonitorSidebar
 from ui.views.workspace import Workspace
+from ui.style_utils import LayoutConstants
 
 logger = get_logger(__name__)
 
@@ -80,14 +81,14 @@ class MainWindow(Adw.ApplicationWindow):
         self.left_split_view = Adw.OverlaySplitView()
         self.left_split_view.set_sidebar(self.left_sidebar)
         self.left_split_view.set_content(self.workspace)
-        self.left_split_view.set_min_sidebar_width(250)
+        self.left_split_view.set_min_sidebar_width(LayoutConstants.SIDEBAR_MIN_WIDTH)
         self.left_split_view.bind_property("show-sidebar", self.toggle_left, "active", GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
 
         self.right_split_view = Adw.OverlaySplitView()
         self.right_split_view.set_sidebar_position(Gtk.PackType.END)
         self.right_split_view.set_sidebar(self.right_sidebar)
         self.right_split_view.set_content(self.left_split_view)
-        self.right_split_view.set_min_sidebar_width(300)
+        self.right_split_view.set_min_sidebar_width(LayoutConstants.RIGHT_SIDEBAR_MIN_WIDTH)
         self.right_split_view.bind_property("show-sidebar", self.toggle_right, "active", GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
 
         toolbar_view.set_content(self.right_split_view)
@@ -152,8 +153,7 @@ class MainWindow(Adw.ApplicationWindow):
         logger.info(f"Injecting /model set command for session '{pane.session_id}' to: {model_name}")
         # Send '/model set <model_name>' followed by Carriage Return (\r) for ENTER
         command = f"/model set {model_name}\r"
-        if hasattr(pane.terminal, 'feed_child'):
-            pane.terminal.feed_child(command.encode("utf-8"))
+        pane.inject_command(command)
 
     def _on_settings_clicked(self, button):
         if not self.config_manager:

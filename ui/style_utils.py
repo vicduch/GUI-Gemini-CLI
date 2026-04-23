@@ -5,6 +5,29 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Adw, Gtk, Gdk
 
 
+class LayoutConstants:
+    """Centralized layout constants for UI consistency."""
+    FOCUS_ANIMATION_DURATION = 400  # ms
+    WORKSPACE_MARGIN = 16
+    WORKSPACE_SPACING = 8
+    FOCUS_MARGIN_RATIO = 0.05
+    MIN_MARGIN = 8
+    
+    # Left Sidebar Constants
+    SIDEBAR_SPACING = 12
+    SIDEBAR_MARGIN_H = 12
+    SIDEBAR_MARGIN_V = 6
+    SIDEBAR_MIN_WIDTH = 250
+    
+    # Right Sidebar Constants
+    RIGHT_SIDEBAR_MIN_WIDTH = 300
+    
+    # Terminal Pane Constants
+    TERMINAL_HEADER_SPACING = 4
+    TERMINAL_HEADER_MARGIN_H = 4
+    TERMINAL_HEADER_MARGIN_V = 2
+
+
 def get_color_scheme_for_name(theme_name: str) -> Adw.ColorScheme:
     if theme_name == "Light":
         return Adw.ColorScheme.FORCE_LIGHT

@@ -8,6 +8,7 @@ from gi.repository import Gtk, GObject, Adw
 
 from ui.components.empty_slot import EmptySlot
 from ui.components.terminal_pane import TerminalPane
+from ui.style_utils import LayoutConstants
 
 
 class Workspace(Gtk.Stack):
@@ -37,12 +38,13 @@ class Workspace(Gtk.Stack):
         self._target_margins = (0, 0, 0, 0)
 
         self.grid = Gtk.Grid()
-        self.grid.set_column_spacing(8)
-        self.grid.set_row_spacing(8)
-        self.grid.set_margin_top(8)
-        self.grid.set_margin_bottom(8)
-        self.grid.set_margin_start(8)
-        self.grid.set_margin_end(8)
+        self.grid.set_column_spacing(LayoutConstants.WORKSPACE_SPACING)
+        self.grid.set_row_spacing(LayoutConstants.WORKSPACE_SPACING)
+        s = LayoutConstants.WORKSPACE_SPACING
+        self.grid.set_margin_top(s)
+        self.grid.set_margin_bottom(s)
+        self.grid.set_margin_start(s)
+        self.grid.set_margin_end(s)
         self.add_titled(self.grid, "grid_page", "Grid")
 
         self.focus_overlay = Gtk.Overlay()
@@ -162,9 +164,9 @@ class Workspace(Gtk.Stack):
         
         start_margins = (x, tw - (x + w), y, th - (y + h))
         
-        # Target margins (5%)
-        target_hm = max(int(tw * 0.05), 8)
-        target_vm = max(int(th * 0.05), 8)
+        # Target margins
+        target_hm = max(int(tw * LayoutConstants.FOCUS_MARGIN_RATIO), LayoutConstants.MIN_MARGIN)
+        target_vm = max(int(th * LayoutConstants.FOCUS_MARGIN_RATIO), LayoutConstants.MIN_MARGIN)
         end_margins = (target_hm, target_hm, target_vm, target_vm)
 
         try:
@@ -206,13 +208,14 @@ class Workspace(Gtk.Stack):
         # Calculate target margins in the grid
         col, row = self.pane_positions[pane]
 
-        # The grid fills the workspace with 8px margins
-        cell_w = (tw - 16 - (self._columns - 1) * 8) / self._columns
-        cell_h = (th - 16 - (self._rows - 1) * 8) / self._rows
+        # The grid fills the workspace with spacing margins
+        s = LayoutConstants.WORKSPACE_SPACING
+        cell_w = (tw - 2 * s - (self._columns - 1) * s) / self._columns
+        cell_h = (th - 2 * s - (self._rows - 1) * s) / self._rows
 
-        gx = 8 + col * (cell_w + 8)
-        gy = 8 + row * (cell_h + 8)
-        # Adjust for stack margins/padding if any (the grid has 8px margins)
+        gx = s + col * (cell_w + s)
+        gy = s + row * (cell_h + s)
+        # Adjust for stack margins/padding if any (the grid has spacing margins)
         end_margins = (int(gx), int(tw - (gx + cell_w)), int(gy), int(th - (gy + cell_h)))
 
         def on_done():
@@ -246,7 +249,7 @@ class Workspace(Gtk.Stack):
             self.focus_bin.set_margin_bottom(int(mb))
 
         target = Adw.CallbackAnimationTarget.new(update_cb)
-        self._animation = Adw.TimedAnimation.new(self, 0, 1, 400, target)
+        self._animation = Adw.TimedAnimation.new(self, 0, 1, LayoutConstants.FOCUS_ANIMATION_DURATION, target)
         self._animation.set_easing(Adw.Easing.EASE_OUT_QUINT)
         
         if callback:
@@ -276,8 +279,8 @@ class Workspace(Gtk.Stack):
         if height is None:
             height = max(self.get_height(), 0)
 
-        horizontal_margin = max(int(width * 0.05), 8)
-        vertical_margin = max(int(height * 0.05), 8)
+        horizontal_margin = max(int(width * LayoutConstants.FOCUS_MARGIN_RATIO), LayoutConstants.MIN_MARGIN)
+        vertical_margin = max(int(height * LayoutConstants.FOCUS_MARGIN_RATIO), LayoutConstants.MIN_MARGIN)
         self.focus_bin.set_margin_start(horizontal_margin)
         self.focus_bin.set_margin_end(horizontal_margin)
         self.focus_bin.set_margin_top(vertical_margin)
