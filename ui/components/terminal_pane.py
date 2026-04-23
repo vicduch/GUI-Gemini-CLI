@@ -3,7 +3,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("Vte", "3.91")
-from gi.repository import Adw, Gtk, Vte
+from gi.repository import Adw, Gtk, Vte, GLib
 
 from core.models import ErrorContract
 
@@ -17,6 +17,9 @@ class TerminalPane(Gtk.Overlay):
         self.terminal = factory()
         self.terminal.set_hexpand(True)
         self.terminal.set_vexpand(True)
+
+        if isinstance(self.terminal, Vte.Terminal):
+            self._spawn_gemini_cli()
 
         self.set_child(self.terminal)
 
@@ -33,6 +36,24 @@ class TerminalPane(Gtk.Overlay):
         self.zoom_button.set_margin_end(8)
 
         self.add_overlay(self.zoom_button)
+
+    def _spawn_gemini_cli(self):
+        """Spawns the gemini-cli process inside the VTE terminal."""
+        command = ["gemini-cli"]
+
+        self.terminal.spawn_async(
+            Vte.PtyFlags.DEFAULT,
+            None,  # working directory
+            command,
+            None,  # envv
+            GLib.SpawnFlags.SEARCH_PATH,
+            None,  # child_setup
+            None,  # child_setup_data
+            -1,    # timeout
+            None,  # cancellable
+            None,  # callback
+            None   # user_data
+        )
 
     def show_error(self, error: ErrorContract):
         """Affiche une bannière d'erreur au-dessus du terminal."""
