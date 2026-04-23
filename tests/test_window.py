@@ -63,8 +63,8 @@ def test_model_change_injects_command_with_real_session(adw_app, fake_terminal_f
     # Fallback list: gemini-3.1-pro-preview, gemini-3-flash-preview, etc.
     pane.model_dropdown.set_selected(1)
     
-    # Verify feed_child was called with the /model set command
-    pane.terminal.feed_child.assert_called_with(b"/model set gemini-3-flash-preview\n")
+    # Verify feed_child was called with the /model set command using \r
+    pane.terminal.feed_child.assert_called_with(b"/model set gemini-3-flash-preview\r")
 
 
 def test_model_change_no_session_active(adw_app, fake_terminal_factory):
