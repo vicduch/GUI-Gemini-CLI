@@ -11,7 +11,7 @@ from core.config_manager import ConfigManager
 from core.ipc_server import IpcServer
 from core.logging_utils import configure_logging
 from core.process_manager import ProcessManager
-from ui.style_utils import apply_theme
+from ui.style_utils import apply_theme, load_css
 from ui.window import MainWindow
 
 
@@ -22,12 +22,13 @@ class GeminiGuiApp(Adw.Application):
         )
         config_dir = os.path.join(GLib.get_user_config_dir(), "gemini-gui")
         self.config = ConfigManager(os.path.join(config_dir, "config.json"))
-        self.pm = ProcessManager()
+        self.pm = ProcessManager(delegate_spawn=True)
         self.ipc = IpcServer("/tmp/gemini-gui-ipc.sock")
 
     def do_activate(self):
         self.ipc.start()
         apply_theme(self.config.get("theme", "System"))
+        load_css()
         
         win = self.props.active_window
         if not win:

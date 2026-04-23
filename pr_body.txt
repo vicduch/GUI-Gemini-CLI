@@ -1,0 +1,8 @@
+## Summary
+- Implemented per-terminal model selection functionality.
+- Enhanced workspace grid management and terminal focus transitions.
+- Added support for injecting model change commands via /model set.
+
+## Test Plan
+- Verified functionality with updated test suite (test_terminal_pane, test_window, test_workspace, test_models).
+- Ensured focus persistence and command injection reliability.

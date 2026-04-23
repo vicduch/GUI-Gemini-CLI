@@ -2,7 +2,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, Gtk, GObject
 
 from core.logging_utils import get_logger
 from core.models import Agent, ErrorContract
@@ -12,6 +12,7 @@ from ui.components.settings_dialog import SettingsDialog
 from ui.views.left_sidebar import LeftSidebar
 from ui.views.right_sidebar import AgentMonitorSidebar
 from ui.views.workspace import Workspace
+from ui.style_utils import LayoutConstants
 
 logger = get_logger(__name__)
 
@@ -22,6 +23,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.process_manager = process_manager
         self.ipc_server = ipc_server
         self.config_manager = config_manager
+        self.terminal_factory = terminal_factory
 
         self.set_title("Gemini GUI Orchestrator")
         self.set_default_size(1200, 800)
@@ -31,13 +33,18 @@ class MainWindow(Adw.ApplicationWindow):
         
         header = Adw.HeaderBar()
         
-        # Model Selection DropDown
-        models = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.0-flash-exp"]
-        self.model_dropdown = Gtk.DropDown.new_from_strings(models)
-        self.model_dropdown.set_valign(Gtk.Align.CENTER)
-        self.model_dropdown.connect("notify::selected", self._on_model_changed)
-        header.pack_start(self.model_dropdown)
-        
+        # Sidebar Toggles
+        self.toggle_left = Gtk.ToggleButton(icon_name="sidebar-show-symbolic")
+        self.toggle_left.set_active(True)
+        self.toggle_left.set_tooltip_text("Toggle Left Sidebar")
+        header.pack_start(self.toggle_left)
+
+        # Right Sidebar Toggle
+        self.toggle_right = Gtk.ToggleButton(icon_name="sidebar-show-right-symbolic")
+        self.toggle_right.set_active(True)
+        self.toggle_right.set_tooltip_text("Toggle Right Sidebar")
+        header.pack_end(self.toggle_right)
+
         # Settings Button
         settings_btn = Gtk.Button(icon_name="emblem-system-symbolic")
         settings_btn.set_tooltip_text("Settings")
@@ -46,8 +53,17 @@ class MainWindow(Adw.ApplicationWindow):
         
         toolbar_view.add_top_bar(header)
 
-        # Structure de base : Box horizontale contenant Sidebar G, Workspace, Sidebar D
-        main_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        # Get available models
+        if self.config_manager:
+            self.available_models = self.config_manager.get("available_models", ["gemini-3.1-pro-preview"])
+        else:
+            self.available_models = [
+                "gemini-3.1-pro-preview",
+                "gemini-3-flash-preview",
+                "gemini-3.1-flash-lite-preview",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
+            ]
 
         # Sidebar Gauche (History & Skills)
         self.left_sidebar = LeftSidebar()
@@ -56,26 +72,52 @@ class MainWindow(Adw.ApplicationWindow):
         self.workspace = Workspace()
         self.workspace.set_hexpand(True)
         self.workspace.set_vexpand(True)
+        self.workspace.connect("slot-requested", self._on_slot_requested)
 
         # Sidebar Droite (Agent Monitor)
         self.right_sidebar = AgentMonitorSidebar()
 
-        main_box.append(self.left_sidebar)
-        main_box.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
-        main_box.append(self.workspace)
-        main_box.append(Gtk.Separator(orientation=Gtk.Orientation.VERTICAL))
-        main_box.append(self.right_sidebar)
+        # Imbrication des SplitViews pour les barres latérales
+        self.left_split_view = Adw.OverlaySplitView()
+        self.left_split_view.set_sidebar(self.left_sidebar)
+        self.left_split_view.set_content(self.workspace)
+        self.left_split_view.set_min_sidebar_width(LayoutConstants.SIDEBAR_MIN_WIDTH)
+        self.left_split_view.bind_property("show-sidebar", self.toggle_left, "active", GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
 
-        toolbar_view.set_content(main_box)
+        self.right_split_view = Adw.OverlaySplitView()
+        self.right_split_view.set_sidebar_position(Gtk.PackType.END)
+        self.right_split_view.set_sidebar(self.right_sidebar)
+        self.right_split_view.set_content(self.left_split_view)
+        self.right_split_view.set_min_sidebar_width(LayoutConstants.RIGHT_SIDEBAR_MIN_WIDTH)
+        self.right_split_view.bind_property("show-sidebar", self.toggle_right, "active", GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
+
+        toolbar_view.set_content(self.right_split_view)
         self.set_content(toolbar_view)
 
-        self.workspace.add_pane(TerminalPane(terminal_factory=terminal_factory))
+        # First terminal
+        pane = TerminalPane(
+            terminal_factory=terminal_factory,
+            available_models=self.available_models
+        )
+        pane.connect("model-changed", self._on_pane_model_changed)
+        self.workspace.add_pane(pane)
 
         if self.process_manager:
             self.process_manager.set_event_callback(self._on_process_event)
+            self.process_manager.spawn(pane.session_id, ["gemini"])
 
         if self.ipc_server:
             self.ipc_server.set_callback(self._on_ipc_message)
+
+    def _on_slot_requested(self, _workspace, slot):
+        pane = TerminalPane(
+            terminal_factory=self.terminal_factory,
+            available_models=self.available_models
+        )
+        pane.connect("model-changed", self._on_pane_model_changed)
+        self.workspace.add_pane(pane, replace_slot=slot)
+        if self.process_manager:
+            self.process_manager.spawn(pane.session_id, ["gemini"])
 
     def _on_process_event(self, event):
         if event.state == ProcessState.FAILED:
@@ -94,22 +136,24 @@ class MainWindow(Adw.ApplicationWindow):
                 self.workspace.panes[0].show_error(err)
             else:
                 logger.warning("No terminal pane found for failed session_id=%s", event.session_id)
+        elif event.event == "spawn_requested":
+            process = self.process_manager.processes.get(event.session_id)
+            if not process:
+                return
+            for pane in self.workspace.panes:
+                if pane.session_id == event.session_id:
+                    pane.spawn_process(
+                        list(process.command),
+                        on_spawned=lambda pid: self.process_manager.attach_pid(event.session_id, pid),
+                        on_exited=lambda status: self.process_manager.mark_exited(event.session_id, status)
+                    )
+                    break
 
-    def _on_model_changed(self, dropdown, pspec):
-        selected_item = dropdown.get_selected_item()
-        if not selected_item:
-            return
-        
-        model_name = selected_item.get_string()
-        logger.info(f"Model changed to: {model_name}")
-        
-        if self.process_manager:
-            session_id = self.workspace.get_active_session_id()
-            if session_id:
-                logger.info(f"Restarting session '{session_id}' with model {model_name}")
-                self.process_manager.restart_with_model(session_id, model_name)
-            else:
-                logger.warning("No active session found for hot-reload")
+    def _on_pane_model_changed(self, pane, model_name):
+        logger.info(f"Injecting /model set command for session '{pane.session_id}' to: {model_name}")
+        # Send '/model set <model_name>' followed by Carriage Return (\r) for ENTER
+        command = f"/model set {model_name}\r"
+        pane.inject_command(command)
 
     def _on_settings_clicked(self, button):
         if not self.config_manager:

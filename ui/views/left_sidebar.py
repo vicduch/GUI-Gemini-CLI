@@ -4,15 +4,16 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk, Gio, GObject
 from ui.views.left_sidebar_models import GHistoryEntry, GSkill
+from ui.style_utils import LayoutConstants
 
 
 class SkillRow(Gtk.Box):
     def __init__(self):
-        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
-        self.set_margin_start(12)
-        self.set_margin_end(12)
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=LayoutConstants.SIDEBAR_SPACING)
+        self.set_margin_start(LayoutConstants.SIDEBAR_MARGIN_H)
+        self.set_margin_end(LayoutConstants.SIDEBAR_MARGIN_H)
+        self.set_margin_top(LayoutConstants.SIDEBAR_MARGIN_V)
+        self.set_margin_bottom(LayoutConstants.SIDEBAR_MARGIN_V)
 
         self.icon = Gtk.Image()
         self.label = Gtk.Label(xalign=0)
@@ -23,7 +24,6 @@ class SkillRow(Gtk.Box):
 class LeftSidebar(Gtk.Box):
     def __init__(self, **kwargs):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, **kwargs)
-        self.set_size_request(250, -1)
 
         self.nav_view = Adw.NavigationView()
         self.append(self.nav_view)
@@ -82,10 +82,10 @@ class LeftSidebar(Gtk.Box):
 
     def _on_history_setup(self, factory, list_item):
         label = Gtk.Label(xalign=0)
-        label.set_margin_start(12)
-        label.set_margin_end(12)
-        label.set_margin_top(6)
-        label.set_margin_bottom(6)
+        label.set_margin_start(LayoutConstants.SIDEBAR_MARGIN_H)
+        label.set_margin_end(LayoutConstants.SIDEBAR_MARGIN_H)
+        label.set_margin_top(LayoutConstants.SIDEBAR_MARGIN_V)
+        label.set_margin_bottom(LayoutConstants.SIDEBAR_MARGIN_V)
         list_item.set_child(label)
 
     def _on_history_bind(self, factory, list_item):

@@ -26,7 +26,12 @@ def adw_app():
 
 @pytest.fixture
 def fake_terminal_factory():
-    return lambda: Gtk.TextView()
+    def _factory():
+        term = Gtk.TextView()
+        term.feed_child = MagicMock()
+        term.spawn_async = MagicMock()
+        return term
+    return _factory
 
 
 def test_main_window_instantiation(adw_app, fake_terminal_factory):
@@ -38,11 +43,16 @@ def test_main_window_instantiation(adw_app, fake_terminal_factory):
 
 def test_window_has_workspace(adw_app, fake_terminal_factory):
     window = MainWindow(application=adw_app, terminal_factory=fake_terminal_factory)
-    assert hasattr(window, "workspace")
     assert isinstance(window.workspace, Workspace)
 
 
-def test_model_change_triggers_hot_reload_with_real_session(adw_app, fake_terminal_factory):
+def test_window_spawns_default_session_on_startup(adw_app, fake_terminal_factory):
+    pm = MagicMock(spec=ProcessManager)
+    win = MainWindow(application=adw_app, process_manager=pm, terminal_factory=fake_terminal_factory)
+    pm.spawn.assert_called_once()
+
+
+def test_model_change_injects_command_with_real_session(adw_app, fake_terminal_factory):
     pm = MagicMock(spec=ProcessManager)
     win = MainWindow(application=adw_app, process_manager=pm, terminal_factory=fake_terminal_factory)
     
@@ -50,13 +60,20 @@ def test_model_change_triggers_hot_reload_with_real_session(adw_app, fake_termin
     pane = win.workspace.panes[0]
     pane.session_id = "real-session-123"
     
-    # Trigger model change
-    # Note: notify::selected is emitted when selection changes.
-    # Initially 0 (gemini-1.5-pro). Change to 1 (gemini-1.5-flash).
-    win.model_dropdown.set_selected(1)
+    # Trigger model change on the pane
+    # Fallback list: gemini-3.1-pro-preview, gemini-3-flash-preview, etc.
+    pane.model_dropdown.set_selected(1)
     
-    # Verify pm.restart_with_model was called with real-session-123
-    pm.restart_with_model.assert_called_with("real-session-123", "gemini-1.5-flash")
+    # Verify feed_child was NOT called yet due to buffering
+    pane.terminal.feed_child.assert_not_called()
+
+    # Simulate spawn completion to flush buffer
+    pane.spawn_process(["gemini"])
+    args, _ = pane.terminal.spawn_async.call_args
+    args[9](pane.terminal, 1234, None, None) # call _spawn_cb
+    
+    # Now verify feed_child was called with the /model set command using \r
+    pane.terminal.feed_child.assert_called_with(b"/model set gemini-3-flash-preview\r")
 
 
 def test_model_change_no_session_active(adw_app, fake_terminal_factory):
@@ -67,11 +84,30 @@ def test_model_change_no_session_active(adw_app, fake_terminal_factory):
     for pane in list(win.workspace.panes):
         win.workspace.remove_pane(pane)
     
-    # Trigger model change
-    win.model_dropdown.set_selected(1)
-    
-    # Verify pm.restart_with_model was NOT called
+    # No pane means no dropdown to trigger
+    assert len(win.workspace.panes) == 0
     pm.restart_with_model.assert_not_called()
+
+
+def test_model_dropdown_populated_from_config(adw_app, fake_terminal_factory):
+    from core.config_manager import ConfigManager
+    cm = MagicMock(spec=ConfigManager)
+    custom_models = ["custom-model-1", "custom-model-2"]
+    cm.get.return_value = custom_models
+    
+    win = MainWindow(application=adw_app, config_manager=cm, terminal_factory=fake_terminal_factory)
+    pane = win.workspace.panes[0]
+    
+    # Check if dropdown has the custom models
+    model_list = []
+    # In GTK4 Gtk.DropDown uses a Gio.ListModel.
+    model = pane.model_dropdown.get_model()
+    for i in range(model.get_n_items()):
+        item = model.get_item(i)
+        model_list.append(item.get_string())
+    
+    assert model_list == custom_models
+    cm.get.assert_called_with("available_models", ["gemini-3.1-pro-preview"])
 
 
 def test_process_error_routed_to_matching_session_pane(adw_app, fake_terminal_factory):
@@ -94,3 +130,15 @@ def test_process_error_routed_to_matching_session_pane(adw_app, fake_terminal_fa
 
     first_pane.show_error.assert_not_called()
     second_pane.show_error.assert_called_once()
+
+def test_window_slot_requested_adds_terminal_pane(adw_app, fake_terminal_factory):
+    win = MainWindow(application=adw_app, terminal_factory=fake_terminal_factory)
+    initial_panes = len(win.workspace.panes)
+    
+    assert len(win.workspace.empty_slots) > 0
+    slot = win.workspace.empty_slots[0]
+    
+    win.workspace.emit("slot-requested", slot)
+    
+    assert len(win.workspace.panes) == initial_panes + 1
+    assert slot not in win.workspace.empty_slots

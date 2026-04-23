@@ -35,11 +35,12 @@ Welcome to the `GUI Terminal` project workspace. When working in this repository
 - **Phase 1 (Done):** Core models and foundational backend structure.
 - **Phase 2 (Done):** IPC server (`core/ipc_server.py`) integrated with GLib, plus initial `MainWindow` and `TerminalPane`.
 - **Phase 3 (Done):** `Workspace` implemented (`Gtk.Grid` + `Gtk.Stack`) with functional Focus Mode transitions.
-- **Phase 4 (In Review):** Hardening pass completed on `feat/phase-4-hardening` (ProcessManager robustness, IPC safety, workspace transition safety, headless test reliability, repo-wide lint config updates). PR open: `#1`.
-- **Next (Phase 5):** Productization and integration:
-  - Integrate real `gemini-cli` orchestration flows end-to-end in UI.
-  - Add richer agent/session monitoring and recovery UX.
-  - Stabilize CI policy and warning budget for long-term maintenance.
+- **Phase 4 (Done):** Hardening pass completed (ProcessManager robustness, IPC safety, workspace transition safety, resize-responsive focus margins, headless test reliability, repo-wide lint config updates).
+- **Phase 5 (Done):** Real integration & observability (Agent Monitor Sidebar, ErrorContract, crash recovery UX, IPC routing).
+- **Next (Phase 6):** Left Sidebar, Settings & Theming:
+  - Implement History & Skills sidebar (`Adw.NavigationView`).
+  - Implement dynamic model selection and Hot-Reload UI.
+  - Add Settings panel and Libadwaita theme synchronization.
 
 ## 6. Local Workspace Notes
 - **Local-only artifacts (do not commit unless explicitly requested):**

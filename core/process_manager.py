@@ -52,8 +52,9 @@ class ProcessEvent:
 
 
 class ProcessManager:
-    def __init__(self, stop_timeout_ms: int = 3000) -> None:
+    def __init__(self, stop_timeout_ms: int = 3000, delegate_spawn: bool = False) -> None:
         self.stop_timeout_ms = stop_timeout_ms
+        self.delegate_spawn = delegate_spawn
         self.processes: dict[str, ProcessInfo] = {}
         self._event_callback: Callable[[ProcessEvent], None] | None = None
         self._spawn_flags = int(GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD)
@@ -80,6 +81,10 @@ class ProcessManager:
         process.pending_command = None
         self.processes[session_id] = process
         self._emit_event(process, "starting")
+
+        if self.delegate_spawn:
+            self._emit_event(process, "spawn_requested")
+            return process
 
         try:
             pid, stdin_fd, stdout_fd, stderr_fd = GLib.spawn_async(  # type: ignore[no-untyped-call]
@@ -109,6 +114,26 @@ class ProcessManager:
         process.state = ProcessState.RUNNING
         self._emit_event(process, "running")
         return process
+
+    def attach_pid(self, session_id: str, pid: int) -> None:
+        process = self.processes.get(session_id)
+        if process is None:
+            return
+        process.pid = pid
+        process.state = ProcessState.RUNNING
+        self._emit_event(process, "running")
+
+    def mark_exited(self, session_id: str, status: int) -> None:
+        process = self.processes.get(session_id)
+        if process is None:
+            return
+        if process.pid is not None:
+            # We don't close the spawn pid here since VTE handles it if delegated
+            pass
+
+        was_stopping = process.state is ProcessState.STOPPING
+        self._finalize_exit(process, status, was_stopping=was_stopping)
+        self._restart_if_pending(session_id)
 
     def stop(self, session_id: str, timeout_ms: int | None = None) -> bool:
         process = self.processes.get(session_id)

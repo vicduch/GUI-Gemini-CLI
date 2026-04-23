@@ -6,10 +6,33 @@ import pytest
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
 
+from ui.components.empty_slot import EmptySlot
 from ui.components.terminal_pane import TerminalPane
 from ui.views.workspace import Workspace
 
 pytestmark = pytest.mark.usefixtures("require_gtk_display")
+
+def test_workspace_initializes_with_empty_slots() -> None:
+    workspace = Workspace(columns=2, rows=2)
+    assert len(workspace.empty_slots) == 4
+    
+    # Check that they are in the grid
+    for slot in workspace.empty_slots:
+        assert slot.get_parent() == workspace.grid
+        
+def test_workspace_add_pane_replaces_empty_slot() -> None:
+    workspace = Workspace(columns=2, rows=2)
+    pane = _make_pane()
+    
+    workspace.add_pane(pane)
+    
+    assert len(workspace.panes) == 1
+    assert len(workspace.empty_slots) == 3
+    assert pane.get_parent() == workspace.grid
+    
+    # Check position of the pane
+    assert workspace.pane_positions[pane] == (0, 0)
+
 
 
 def _make_pane() -> TerminalPane:
