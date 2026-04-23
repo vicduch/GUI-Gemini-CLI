@@ -12,8 +12,41 @@ pytestmark = pytest.mark.usefixtures("require_gtk_display")
 
 def test_terminal_pane_instantiation():
     pane = TerminalPane(terminal_factory=lambda: Gtk.TextView())
-    assert isinstance(pane, Gtk.Overlay)
+    assert isinstance(pane, Gtk.Box)
+    assert pane.get_orientation() == Gtk.Orientation.VERTICAL
     assert isinstance(pane.terminal, Gtk.TextView)
+
+
+def test_terminal_pane_signals():
+    pane = TerminalPane(terminal_factory=lambda: Gtk.TextView(), available_models=["m1", "m2"])
+    
+    model_changed_called = False
+    new_model_val = ""
+
+    def on_model_changed(_pane, model_name):
+        nonlocal model_changed_called, new_model_val
+        model_changed_called = True
+        new_model_val = model_name
+
+    pane.connect("model-changed", on_model_changed)
+    
+    # Simulate selection change
+    pane.model_dropdown.set_selected(1)
+    assert model_changed_called is True
+    assert new_model_val == "m2"
+
+
+def test_terminal_pane_zoom_signal():
+    pane = TerminalPane(terminal_factory=lambda: Gtk.TextView())
+    zoom_called = False
+
+    def on_zoom_clicked(_pane):
+        nonlocal zoom_called
+        zoom_called = True
+
+    pane.connect("zoom-clicked", on_zoom_clicked)
+    pane.zoom_button.emit("clicked")
+    assert zoom_called is True
 
 
 def test_terminal_pane_shows_error():

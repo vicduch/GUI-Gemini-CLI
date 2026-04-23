@@ -50,10 +50,9 @@ def test_model_change_triggers_hot_reload_with_real_session(adw_app, fake_termin
     pane = win.workspace.panes[0]
     pane.session_id = "real-session-123"
     
-    # Trigger model change
-    # Note: notify::selected is emitted when selection changes.
+    # Trigger model change on the pane
     # Fallback list: ["gemini-3.1-pro", "gemini-3-flash", "gemini-3.1-flash-lite"]
-    win.model_dropdown.set_selected(1)
+    pane.model_dropdown.set_selected(1)
     
     # Verify pm.restart_with_model was called with real-session-123 and gemini-3-flash
     pm.restart_with_model.assert_called_with("real-session-123", "gemini-3-flash")
@@ -67,10 +66,8 @@ def test_model_change_no_session_active(adw_app, fake_terminal_factory):
     for pane in list(win.workspace.panes):
         win.workspace.remove_pane(pane)
     
-    # Trigger model change
-    win.model_dropdown.set_selected(1)
-    
-    # Verify pm.restart_with_model was NOT called
+    # No pane means no dropdown to trigger
+    assert len(win.workspace.panes) == 0
     pm.restart_with_model.assert_not_called()
 
 
@@ -81,15 +78,14 @@ def test_model_dropdown_populated_from_config(adw_app, fake_terminal_factory):
     cm.get.return_value = custom_models
     
     win = MainWindow(application=adw_app, config_manager=cm, terminal_factory=fake_terminal_factory)
+    pane = win.workspace.panes[0]
     
     # Check if dropdown has the custom models
     model_list = []
     # In GTK4 Gtk.DropDown uses a Gio.ListModel.
-    # We can get the strings by iterating or checking the model.
-    model = win.model_dropdown.get_model()
+    model = pane.model_dropdown.get_model()
     for i in range(model.get_n_items()):
         item = model.get_item(i)
-        # item is a Gtk.StringObject
         model_list.append(item.get_string())
     
     assert model_list == custom_models

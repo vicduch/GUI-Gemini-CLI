@@ -94,7 +94,7 @@ class Workspace(Gtk.Stack):
         self.pane_positions[pane] = (col, row)
         self.grid.attach(pane, col, row, 1, 1)
 
-        handler_id = pane.zoom_button.connect("clicked", self._on_zoom_clicked, pane)
+        handler_id = pane.connect("zoom-clicked", self._on_zoom_clicked, pane)
         self._zoom_handler_ids[pane] = handler_id
         return True
 
@@ -120,7 +120,7 @@ class Workspace(Gtk.Stack):
 
         handler_id = self._zoom_handler_ids.pop(pane, None)
         if handler_id is not None:
-            pane.zoom_button.disconnect(handler_id)
+            pane.disconnect(handler_id)
 
         self.panes.remove(pane)
         col, row = self.pane_positions.pop(pane)
