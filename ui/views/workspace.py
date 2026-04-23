@@ -3,7 +3,8 @@ from __future__ import annotations
 import gi
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, GObject
+gi.require_version("Adw", "1")
+from gi.repository import Gtk, GObject, Adw
 
 from ui.components.empty_slot import EmptySlot
 from ui.components.terminal_pane import TerminalPane
@@ -16,7 +17,7 @@ class Workspace(Gtk.Stack):
 
     def __init__(self, columns: int = 2, rows: int = 2, **kwargs):
         super().__init__(**kwargs)
-        self.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        self.set_transition_type(Gtk.StackTransitionType.NONE)
 
         self._columns = max(columns, 1)
         self._rows = max(rows, 1)
@@ -30,6 +31,10 @@ class Workspace(Gtk.Stack):
         self._zoom_handler_ids: dict[TerminalPane, int] = {}
         self._slot_clicked_handler_ids: dict[EmptySlot, int] = {}
         self.focused_pane: TerminalPane | None = None
+        
+        self._animation: Adw.TimedAnimation | None = None
+        self._start_geometry = (0, 0, 0, 0)
+        self._target_margins = (0, 0, 0, 0)
 
         self.grid = Gtk.Grid()
         self.grid.set_column_spacing(8)
@@ -145,6 +150,23 @@ class Workspace(Gtk.Stack):
             self.unfocus_pane()
 
         self._is_transitioning = True
+        
+        # Get start geometry relative to workspace
+        coords = pane.translate_coordinates(self, 0, 0)
+        if coords:
+            x, y = coords
+        else:
+            x, y = 0, 0
+        w, h = pane.get_width(), pane.get_height()
+        tw, th = self.get_width(), self.get_height()
+        
+        start_margins = (x, tw - (x + w), y, th - (y + h))
+        
+        # Target margins (5%)
+        target_hm = max(int(tw * 0.05), 8)
+        target_vm = max(int(th * 0.05), 8)
+        end_margins = (target_hm, target_hm, target_vm, target_vm)
+
         try:
             self.focused_pane = pane
 
@@ -153,8 +175,15 @@ class Workspace(Gtk.Stack):
             if pane.get_parent() is not self.focus_bin:
                 self.focus_bin.append(pane)
 
-            self._update_focus_margins()
+            # Set initial position for animation
+            self.focus_bin.set_margin_start(start_margins[0])
+            self.focus_bin.set_margin_end(start_margins[1])
+            self.focus_bin.set_margin_top(start_margins[2])
+            self.focus_bin.set_margin_bottom(start_margins[3])
+            
             self.set_visible_child_name("focus_page")
+            
+            self._animate_margins(start_margins, end_margins)
         finally:
             self._is_transitioning = False
 
@@ -163,21 +192,67 @@ class Workspace(Gtk.Stack):
             return
 
         self._is_transitioning = True
-        try:
-            pane = self.focused_pane
-            if pane is None:
-                return
+        pane = self.focused_pane
+        
+        # Current margins
+        tw, th = self.get_width(), self.get_height()
+        start_margins = (
+            self.focus_bin.get_margin_start(),
+            self.focus_bin.get_margin_end(),
+            self.focus_bin.get_margin_top(),
+            self.focus_bin.get_margin_bottom()
+        )
+        
+        # Calculate target margins in the grid
+        col, row = self.pane_positions[pane]
 
-            if pane.get_parent() is self.focus_bin:
-                self.focus_bin.remove(pane)
+        # The grid fills the workspace with 8px margins
+        cell_w = (tw - 16 - (self._columns - 1) * 8) / self._columns
+        cell_h = (th - 16 - (self._rows - 1) * 8) / self._rows
 
-            col, row = self.pane_positions[pane]
-            self.grid.attach(pane, col, row, 1, 1)
+        gx = 8 + col * (cell_w + 8)
+        gy = 8 + row * (cell_h + 8)
+        # Adjust for stack margins/padding if any (the grid has 8px margins)
+        end_margins = (int(gx), int(tw - (gx + cell_w)), int(gy), int(th - (gy + cell_h)))
 
-            self.focused_pane = None
-            self.set_visible_child_name("grid_page")
-        finally:
-            self._is_transitioning = False
+        def on_done():
+            self._is_transitioning = True
+            try:
+                if pane.get_parent() is self.focus_bin:
+                    self.focus_bin.remove(pane)
+
+                col, row = self.pane_positions[pane]
+                self.grid.attach(pane, col, row, 1, 1)
+
+                self.focused_pane = None
+                self.set_visible_child_name("grid_page")
+            finally:
+                self._is_transitioning = False
+
+        self._animate_margins(start_margins, end_margins, on_done)
+
+    def _animate_margins(self, start: tuple[int, int, int, int], end: tuple[int, int, int, int], callback=None) -> None:
+        if self._animation:
+            self._animation.skip()
+
+        def update_cb(value: float) -> None:
+            ms = start[0] + (end[0] - start[0]) * value
+            me = start[1] + (end[1] - start[1]) * value
+            mt = start[2] + (end[2] - start[2]) * value
+            mb = start[3] + (end[3] - start[3]) * value
+            self.focus_bin.set_margin_start(int(ms))
+            self.focus_bin.set_margin_end(int(me))
+            self.focus_bin.set_margin_top(int(mt))
+            self.focus_bin.set_margin_bottom(int(mb))
+
+        target = Adw.CallbackAnimationTarget.new(update_cb)
+        self._animation = Adw.TimedAnimation.new(self, 0, 1, 400, target)
+        self._animation.set_easing(Adw.Easing.EASE_OUT_QUINT)
+        
+        if callback:
+            self._animation.connect("done", lambda _: callback())
+            
+        self._animation.play()
 
     def _on_zoom_clicked(self, _button: Gtk.Button, pane: TerminalPane) -> None:
         self.focus_pane(pane)
@@ -193,6 +268,9 @@ class Workspace(Gtk.Stack):
         self._update_focus_margins(width=width, height=height)
 
     def _update_focus_margins(self, width: int | None = None, height: int | None = None) -> None:
+        if self._is_transitioning or (self._animation and self._animation.get_state() == Adw.AnimationState.PLAYING):
+            return
+
         if width is None:
             width = max(self.get_width(), 0)
         if height is None:
