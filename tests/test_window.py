@@ -52,7 +52,7 @@ def test_model_change_triggers_hot_reload_with_real_session(adw_app, fake_termin
     
     # Trigger model change
     # Note: notify::selected is emitted when selection changes.
-    # Fallback list: ["gemini-1.5-pro", "gemini-3-flash", "gemini-2.0-flash-exp"]
+    # Fallback list: ["gemini-3.1-pro", "gemini-3-flash", "gemini-3.1-flash-lite"]
     win.model_dropdown.set_selected(1)
     
     # Verify pm.restart_with_model was called with real-session-123 and gemini-3-flash
@@ -72,6 +72,28 @@ def test_model_change_no_session_active(adw_app, fake_terminal_factory):
     
     # Verify pm.restart_with_model was NOT called
     pm.restart_with_model.assert_not_called()
+
+
+def test_model_dropdown_populated_from_config(adw_app, fake_terminal_factory):
+    from core.config_manager import ConfigManager
+    cm = MagicMock(spec=ConfigManager)
+    custom_models = ["custom-model-1", "custom-model-2"]
+    cm.get.return_value = custom_models
+    
+    win = MainWindow(application=adw_app, config_manager=cm, terminal_factory=fake_terminal_factory)
+    
+    # Check if dropdown has the custom models
+    model_list = []
+    # In GTK4 Gtk.DropDown uses a Gio.ListModel.
+    # We can get the strings by iterating or checking the model.
+    model = win.model_dropdown.get_model()
+    for i in range(model.get_n_items()):
+        item = model.get_item(i)
+        # item is a Gtk.StringObject
+        model_list.append(item.get_string())
+    
+    assert model_list == custom_models
+    cm.get.assert_called_with("available_models", ["gemini-3.1-pro"])
 
 
 def test_process_error_routed_to_matching_session_pane(adw_app, fake_terminal_factory):
