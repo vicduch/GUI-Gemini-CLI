@@ -2,12 +2,16 @@ import json
 import os
 from typing import Any
 
+DEFAULT_MODELS = ["gemini-3.1-pro", "gemini-3-flash", "gemini-3.1-flash-lite"]
+
 
 class ConfigManager:
     def __init__(self, config_path: str):
         self.config_path = config_path
         self.config: dict[str, Any] = {}
         self.load()
+        if "available_models" not in self.config:
+            self.config["available_models"] = DEFAULT_MODELS
 
     def load(self) -> None:
         if os.path.exists(self.config_path):

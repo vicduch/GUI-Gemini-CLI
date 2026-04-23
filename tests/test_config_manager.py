@@ -53,4 +53,12 @@ def test_config_manager_load_non_object_json_defaults_to_empty_dict(tmp_path):
 
     manager = ConfigManager(str(config_file))
 
-    assert manager.config == {}
+    assert "available_models" in manager.config
+    assert manager.config["available_models"] == ["gemini-3.1-pro", "gemini-3-flash", "gemini-3.1-flash-lite"]
+
+def test_get_default_models(tmp_path):
+    path = str(tmp_path / "config.json")
+    cm = ConfigManager(path)
+    models = cm.get("available_models")
+    assert "gemini-3.1-pro" in models
+    assert "gemini-3-flash" in models
